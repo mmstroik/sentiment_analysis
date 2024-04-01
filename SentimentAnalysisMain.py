@@ -75,9 +75,7 @@ async def process_tweets_in_batches(
     batch_requests_limit,
 ):
     log_message("Calculating token counts for each tweet/sample...")
-    df["Token Count"] = df["Full Text"].apply(
-        lambda tweet: len(ENCODING.encode(tweet)) + token_buffer
-    )
+    calculate_token_count(df, token_buffer)
 
     total = len(df)
     processed = 0
@@ -85,21 +83,10 @@ async def process_tweets_in_batches(
         start_idx = 0
         update_progress_callback(5)
 
-        # Calculate batch size
         while start_idx < len(df):
-            log_message("Calculating batch size for the next batch...")
-            batch_token_count = 0
-            batch_end_idx = start_idx
-            while (
-                batch_end_idx < len(df)
-                and (batch_end_idx - start_idx) < batch_requests_limit
-            ):
-                tweet_token_count = df.iloc[batch_end_idx]["Token Count"]
-                if batch_token_count + tweet_token_count <= batch_token_limit:
-                    batch_token_count += tweet_token_count
-                    batch_end_idx += 1
-                else:
-                    break
+            batch_end_idx = calculate_batch_size(
+                df, batch_token_limit, batch_requests_limit, start_idx
+            )
 
             # Process the batch
             log_message(
@@ -128,7 +115,32 @@ async def process_tweets_in_batches(
 
             if start_idx < len(df):
                 log_message(f"Waiting for rate limit timer...")
-                await timer  # Await rate limit timer if not done processing
+                await timer
+        return df
+
+
+def calculate_token_count(df, token_buffer):
+    df["Token Count"] = df["Full Text"].apply(
+        lambda tweet: len(ENCODING.encode(tweet)) + token_buffer
+    )
+
+
+# Calculate batch size
+def calculate_batch_size(df, batch_token_limit, batch_requests_limit, start_idx):
+    log_message("Calculating size of next batch...")
+
+    batch_token_count = 0
+    batch_end_idx = start_idx
+    while (
+        batch_end_idx < len(df) and (batch_end_idx - start_idx) < batch_requests_limit
+    ):
+        tweet_token_count = df.iloc[batch_end_idx]["Token Count"]
+        if batch_token_count + tweet_token_count <= batch_token_limit:
+            batch_token_count += tweet_token_count
+            batch_end_idx += 1
+        else:
+            break
+    return batch_end_idx
 
 
 """GUI <-> CORE LOGIC COMMUNICATION"""
@@ -197,7 +209,6 @@ def run_sentiment_analysis_thread(
     batch_token_limit,
     batch_requests_limit,
 ):
-    global df
     log_message(f"Starting sentiment analysis for text samples in {input_file}.")
 
     df = pd.read_excel(input_file)
@@ -206,7 +217,7 @@ def run_sentiment_analysis_thread(
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(
+    df = loop.run_until_complete(
         process_tweets_in_batches(
             df,
             token_buffer,
@@ -228,6 +239,7 @@ def run_sentiment_analysis_thread(
     update_progress_callback(100)
     log_message(f"Sentiment analysis results saved to {output_file}.")
     messagebox.showinfo("Success", "Sentiment analysis completed successfully.")
+    return df
 
 
 # Main function to run sentiment analysis
