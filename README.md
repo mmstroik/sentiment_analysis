@@ -1,6 +1,4 @@
 # Quadrant Digital Sentiment Analysis Tool
-## Installation
-Download/copy the `Sentiment-Analysis.exe` file from the 'App' folder to a local folder on your computer (like Desktop). You can pin the app to your taskbar for convenience.
 ## Usage
 - Open the saved `Sentiment-Analysis.exe` file to launch the tool.
 - Prepare and save your Excel file containing the tweets/text you want to analyze. Ensure that the tweets/text are stored under a column named "Full Text". If you don't have an Excel file ready, you can create a new one, add a column named "Full Text", and copy and paste your tweets into that column.
