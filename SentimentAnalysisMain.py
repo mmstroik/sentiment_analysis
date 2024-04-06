@@ -184,19 +184,6 @@ def set_prompts(
     return token_buffer, system_prompt, user_prompt
 
 
-# Set up the progress bar widget that gets updated by the core logic
-def setup_progress_bar(main_frame, progress_var):
-    if not hasattr(main_frame, "progress_bar"):
-        progress_bar = ttk.Progressbar(
-            main_frame, length=400, variable=progress_var, maximum=100
-        )
-        progress_bar.pack(pady=10)
-        main_frame.progress_bar = progress_bar
-    else:
-        progress_bar = main_frame.progress_bar
-    return progress_bar
-
-
 # Handle file reading and writing and call the core logic in a separate thread
 def run_sentiment_analysis_thread(
     input_file,
@@ -283,6 +270,18 @@ def run_sentiment_analysis():
 
 
 """GUI EVENT HANDLING FUNCTIONS"""
+
+# Set up the progress bar widget that gets updated by the core logic
+def setup_progress_bar(main_frame, progress_var):
+    if not hasattr(main_frame, "progress_bar"):
+        progress_bar = ttk.Progressbar(
+            main_frame, length=400, variable=progress_var, maximum=100
+        )
+        progress_bar.pack(pady=10)
+        main_frame.progress_bar = progress_bar
+    else:
+        progress_bar = main_frame.progress_bar
+    return progress_bar
 
 
 # Log a message to the GUI
