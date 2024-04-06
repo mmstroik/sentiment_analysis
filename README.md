@@ -30,4 +30,5 @@ If you encounter an error message, please ensure that:
 - Your input file and output file path are in a location where the tool has read and write permissions (Sharepoint may not work).
   - If your input file is saved to a folder in your Onedrive, ensure that you close the excel window after saving (so that it syncs).
 - You have a stable internet connection, as the tool requires access to the OpenAI API.
+
 Contact Milo for any other issues or questions.
