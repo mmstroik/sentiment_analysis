@@ -18,7 +18,7 @@
    5. Click on the "Run Sentiment Analysis" button to start the analysis process.
 5. The tool will calculate batch sizes based on the input tokens per tweet/text and the per-minute API rate limits. It will then process and classify the text in batches, waiting for ~60 seconds between each batch, so it may take a few minutes.
 6. Once the analysis is complete, a success message will be displayed, and the output Excel file will be saved to the location you specified.
-7. 
+
 _*Click reset to restore the default prompt._
 _**Change to match your system prompt. E.g., if your system prompt refers to the "Tweet" instead of "Text", change the user prompt to "Tweet:"_
 ## Troubleshooting
