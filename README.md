@@ -1,10 +1,11 @@
 # Quadrant Digital Sentiment Analysis Tool
-## Usage
+## Installation
 1. Download/copy the `Sentiment-Analysis.exe` file from the 'App' folder to a local folder on your computer (like Desktop). You can pin the app to your taskbar for convenience.
-2. Double-click on the saved `Sentiment-Analysis.exe` file to launch the tool.
-3. Prepare your Excel file containing the tweets/text you want to analyze. Ensure that the tweets/text are stored under a column named "Full Text". If you don't have an Excel file ready, you can create a new one with a column named "Full Text" and copy and paste your tweets into that column.
+## Usage
+3. Open the saved `Sentiment-Analysis.exe` file to launch the tool.
+4. Prepare and save your Excel file containing the tweets/text you want to analyze. Ensure that the tweets/text are stored under a column named "Full Text". If you don't have an Excel file ready, you can create a new one, add a column named "Full Text", and copy and paste your tweets into that column.
    - You may find it helpful to use the same input file each time and just copy and paste new tweets into the file for analysis.
-4. In the Sentiment Analysis Tool window:
+### In the Sentiment Analysis Tool window:
    1. Click on the "Browse" button next to "Input File" and select your Excel file containing the tweets.
    2. Click on the "Browse" button next to "Output File" and choose a location and filename for the output Excel file that will contain the sentiment analysis results.
       - Note: Choose a unique (and identifiable) name because the tool will overwrite any existing file with the same name (or produce an error).
@@ -20,12 +21,13 @@
 6. Once the analysis is complete, a success message will be displayed, and the output Excel file will be saved to the location you specified.
 
 _*Click reset to restore the default prompt._
+
 _**Change to match your system prompt. E.g., if your system prompt refers to the "Tweet" instead of "Text", change the user prompt to "Tweet:"_
 ## Troubleshooting
-- If you encounter an error message, please ensure that:
-  - Your input Excel file is properly formatted with a column named "Full Text" containing the tweets.
-  - You have provided valid file paths for both the input and output files.
-  - Your input file and output file path are in a location where the tool has read and write permissions.
-    - I.e., not the shared Onedrive folder.
-  - You have a stable internet connection, as the tool requires access to the OpenAI API.
-- Contact Milo for any issues or questions.
+If you encounter an error message, please ensure that:
+- Your input Excel file is properly formatted with a column named "Full Text" containing the tweets.
+- You have provided valid file paths for both the input and output files.
+- Your input file and output file path are in a location where the tool has read and write permissions (Sharepoint may not work).
+  - If your input file is saved to a folder in your Onedrive, ensure that you close the excel window after saving (so that it syncs).
+- You have a stable internet connection, as the tool requires access to the OpenAI API.
+Contact Milo for any other issues or questions.
