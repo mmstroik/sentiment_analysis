@@ -124,7 +124,7 @@ async def reprocess_errors(
     batch_requests_limit,
     session,
 ):
-    errored_df = df[df["Sentiment"] == "Error"]
+    errored_df = df[df["Sentiment"].isin(["Error", ""])]
     if not errored_df.empty:
         log_callback(
             f"Waiting for rate limit timer before reprocessing {len(errored_df)} errored tweets..."
