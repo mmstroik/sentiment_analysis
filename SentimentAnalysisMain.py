@@ -22,6 +22,129 @@ ENCODING = tiktoken.get_encoding("cl100k_base")
 """ASYNC CORE LOGIC FUNCTIONS"""
 
 
+# Asynchronously processes tweets in batches (based on token counts)
+async def process_tweets_in_batches(
+    df,
+    token_buffer: int,
+    update_progress_callback,
+    system_prompt,
+    user_prompt,
+    model,
+    batch_token_limit,
+    batch_requests_limit,
+):
+    log_message("Calculating token counts for each tweet/sample...")
+    calculate_token_count(df, token_buffer)
+
+    total = len(df)
+    processed = 0
+    async with ClientSession() as session:
+        start_idx = 0
+        update_progress_callback(5)
+
+        while start_idx < len(df):
+            batch_end_idx = calculate_batch_size(
+                df, batch_token_limit, batch_requests_limit, start_idx
+            )
+            log_message(
+                f"Processing batch {start_idx+1}-{batch_end_idx} of {total} tweets/samples..."
+            )
+            # Set batch and send requests
+            batch = df.iloc[start_idx:batch_end_idx]
+            tasks = [
+                call_openai_async(session, tweet, system_prompt, user_prompt, model)
+                for tweet in batch["Full Text"]
+            ]
+            timer = asyncio.create_task(asyncio.sleep(60))
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            # Handle results
+            for tweet_idx, result in zip(batch.index, results):
+                if isinstance(result, Exception):
+                    log_message(f"Error processing text at row {tweet_idx}: {result}")
+                else:
+                    df.at[tweet_idx, "Sentiment"] = result
+
+            processed += len(results)
+            progress = (processed / total) * 95
+            update_progress_callback(progress)
+            log_message(f"Processed {processed} of {total} tweets/samples.")
+            start_idx = batch_end_idx
+
+            if start_idx < len(df):
+                log_message("Waiting for rate limit timer...")
+                await timer
+
+        # Reprocess errored tweets
+        errored_df = df[df["Sentiment"] == "Error"]
+        await reprocess_errors(
+            df,
+            update_progress_callback,
+            system_prompt,
+            user_prompt,
+            model,
+            batch_token_limit,
+            batch_requests_limit,
+            session,
+            errored_df,
+        )
+    return df
+
+
+# Asynchronously reprocesses errored tweets
+async def reprocess_errors(
+    df,
+    update_progress_callback,
+    system_prompt,
+    user_prompt,
+    model,
+    batch_token_limit,
+    batch_requests_limit,
+    session,
+    errored_df,
+):
+    if not errored_df.empty:
+        log_message(
+            f"Waiting for rate limit timer before reprocessing {len(errored_df)} errored tweets..."
+        )
+        await asyncio.sleep(60)  # Wait for 60 seconds before starting the reprocessing
+
+        total_errors = len(errored_df)
+        processed_errors = 0
+        start_idx = 0
+
+        while start_idx < len(errored_df):
+            batch_end_idx = calculate_batch_size(
+                errored_df, batch_token_limit, batch_requests_limit, start_idx
+            )
+
+            # Reprocess the batch of errored tweets
+            batch = errored_df.iloc[start_idx:batch_end_idx]
+            tasks = [
+                call_openai_async(session, tweet, system_prompt, user_prompt, model)
+                for tweet in batch["Full Text"]
+            ]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            # Handle results for errored tweets
+            for tweet_idx, result in zip(batch.index, results):
+                if isinstance(result, Exception):
+                    log_message(f"Error reprocessing text at row {tweet_idx}: {result}")
+                    df.at[tweet_idx, "Sentiment"] = "Final Error"
+                else:
+                    df.at[tweet_idx, "Sentiment"] = result
+
+            processed_errors += len(results)
+            progress = (processed_errors / total_errors) * 95
+            update_progress_callback(
+                progress + 5
+            )  # Adjust progress callback for error processing
+            log_message(
+                f"Reprocessed {processed_errors} of {total_errors} errored tweets."
+            )
+            start_idx = batch_end_idx
+
+
 # Asynchronously calls the API to classify the sentiment of a tweet/sample
 async def call_openai_async(
     session: ClientSession,
@@ -59,99 +182,8 @@ async def call_openai_async(
                 retry_delay += 2
             else:
                 result = await response.text()
-                #todo
+                # todo
                 return "Error"  # Return an error marker
-
-
-# Asynchronously processes tweets in batches (based on token counts)
-async def process_tweets_in_batches(
-    df,
-    token_buffer: int,
-    update_progress_callback,
-    system_prompt,
-    user_prompt,
-    model,
-    batch_token_limit,
-    batch_requests_limit,
-):
-    log_message("Calculating token counts for each tweet/sample...")
-    calculate_token_count(df, token_buffer)
-
-    total = len(df)
-    processed = 0
-    async with ClientSession() as session:
-        start_idx = 0
-        update_progress_callback(5)
-
-        while start_idx < len(df):
-            batch_end_idx = calculate_batch_size(
-                df, batch_token_limit, batch_requests_limit, start_idx
-            )
-            # Process the batch
-            log_message(
-                f"Processing batch {start_idx+1}-{batch_end_idx} of {total} tweets/samples..."
-            )
-            batch = df.iloc[start_idx:batch_end_idx]
-            tasks = [
-                call_openai_async(session, tweet, system_prompt, user_prompt, model)
-                for tweet in batch["Full Text"]
-            ]
-            timer = asyncio.create_task(asyncio.sleep(60))
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-
-            # Handle results
-            for tweet_idx, result in zip(batch.index, results):
-                if isinstance(result, Exception):
-                    log_message(f"Error processing text at row {tweet_idx}: {result}")
-                else:
-                    df.at[tweet_idx, "Sentiment"] = result
-
-            processed += len(results)
-            progress = (processed / total) * 95
-            update_progress_callback(progress)
-            log_message(f"Processed {processed} of {total} tweets/samples.")
-            start_idx = batch_end_idx
-
-            if start_idx < len(df):
-                log_message("Waiting for rate limit timer...")
-                await timer
-
-        errored_df = df[df['Sentiment'] == "Error"]
-        if not errored_df.empty:
-            log_message(f"Waiting for rate limit timer before reprocessing {len(errored_df)} errored tweets...")
-            await asyncio.sleep(60)  # Wait for 60 seconds before starting the reprocessing
-
-            total_errors = len(errored_df)
-            processed_errors = 0
-            start_idx = 0
-
-            while start_idx < len(errored_df):
-                batch_end_idx = calculate_batch_size(
-                    errored_df, batch_token_limit, batch_requests_limit, start_idx
-                )
-
-                # Reprocess the batch of errored tweets
-                batch = errored_df.iloc[start_idx:batch_end_idx]
-                tasks = [
-                    call_openai_async(session, tweet, system_prompt, user_prompt, model)
-                    for tweet in batch["Full Text"]
-                ]
-                results = await asyncio.gather(*tasks, return_exceptions=True)
-
-                # Handle results for errored tweets
-                for tweet_idx, result in zip(batch.index, results):
-                    if isinstance(result, Exception):
-                        log_message(f"Error reprocessing text at row {tweet_idx}: {result}")
-                        df.at[tweet_idx, "Sentiment"] = "Final Error"
-                    else:
-                        df.at[tweet_idx, "Sentiment"] = result
-
-                processed_errors += len(results)
-                progress = (processed_errors / total_errors) * 95
-                update_progress_callback(progress + 5)  # Adjust progress callback for error processing
-                log_message(f"Reprocessed {processed_errors} of {total_errors} errored tweets.")
-                start_idx = batch_end_idx
-    return df
 
 
 def calculate_token_count(df, token_buffer):
@@ -176,7 +208,6 @@ def calculate_batch_size(df, batch_token_limit, batch_requests_limit, start_idx)
         else:
             break
     return batch_end_idx
-
 
 
 """GUI <-> CORE LOGIC COMMUNICATION"""
@@ -218,6 +249,46 @@ def set_prompts(
         system_prompt = system_prompt_entry.get("1.0", tk.END).strip()
         user_prompt = user_prompt_entry.get()
     return token_buffer, system_prompt, user_prompt
+
+
+# Main function to run sentiment analysis
+# (called when the "Run Sentiment Analysis" button is clicked)
+def run_sentiment_analysis():
+    global progress_bar
+    input_file = input_entry.get()
+    output_file = output_entry.get()
+    customization_option = customization_var.get()
+    if not input_file or not output_file:
+        messagebox.showerror(
+            "Error", "Please provide both input and output file paths."
+        )
+        return
+    model, batch_token_limit, batch_requests_limit = select_model(gpt_model_var)
+    token_buffer, system_prompt, user_prompt = set_prompts(
+        customization_option, company_entry, system_prompt_entry, user_prompt_entry
+    )
+    progress_bar = setup_progress_bar(main_frame, progress_var)
+    progress_var.set(0)
+    run_button.config(state=tk.DISABLED)
+    try:
+        thread = threading.Thread(
+            target=run_sentiment_analysis_thread,
+            args=(
+                input_file,
+                output_file,
+                token_buffer,
+                update_progress_gui,
+                system_prompt,
+                user_prompt,
+                model,
+                batch_token_limit,
+                batch_requests_limit,
+            ),
+        )
+        thread.start()
+    except Exception as e:
+        messagebox.showerror("Error", f"An error occurred: {str(e)}")
+        run_button.config(state=tk.NORMAL)
 
 
 # Handle file reading and writing and call the core logic in a separate thread
@@ -266,47 +337,8 @@ def run_sentiment_analysis_thread(
     return df
 
 
-# Main function to run sentiment analysis
-# (called when the "Run Sentiment Analysis" button is clicked)
-def run_sentiment_analysis():
-    global progress_bar
-    input_file = input_entry.get()
-    output_file = output_entry.get()
-    customization_option = customization_var.get()
-    if not input_file or not output_file:
-        messagebox.showerror(
-            "Error", "Please provide both input and output file paths."
-        )
-        return
-    model, batch_token_limit, batch_requests_limit = select_model(gpt_model_var)
-    token_buffer, system_prompt, user_prompt = set_prompts(
-        customization_option, company_entry, system_prompt_entry, user_prompt_entry
-    )
-    progress_bar = setup_progress_bar(main_frame, progress_var)
-    progress_var.set(0)
-    run_button.config(state=tk.DISABLED)
-    try:
-        thread = threading.Thread(
-            target=run_sentiment_analysis_thread,
-            args=(
-                input_file,
-                output_file,
-                token_buffer,
-                update_progress_gui,
-                system_prompt,
-                user_prompt,
-                model,
-                batch_token_limit,
-                batch_requests_limit,
-            ),
-        )
-        thread.start()
-    except Exception as e:
-        messagebox.showerror("Error", f"An error occurred: {str(e)}")
-        run_button.config(state=tk.NORMAL)
-
-
 """GUI EVENT HANDLING FUNCTIONS"""
+
 
 # Set up the progress bar widget that gets updated by the core logic
 def setup_progress_bar(main_frame, progress_var):
