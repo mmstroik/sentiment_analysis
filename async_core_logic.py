@@ -166,7 +166,7 @@ async def reprocess_errors(
             start_idx = batch_end_idx
 
 
-# Asynchronously calls the API to classify the sentiment of a tweet/sample
+# Asynchronously calls the API for each tweet in the batch
 async def call_openai_async(
     session: ClientSession,
     tweet: str,
