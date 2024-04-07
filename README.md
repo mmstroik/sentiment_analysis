@@ -24,6 +24,7 @@ _**Change to match your system prompt. E.g., if your system prompt refers to the
 ## Troubleshooting
 If you encounter a "file permissions" error message:
 - If your input file is saved to a folder in your Onedrive (or another cloud drive), ensure that you close the excel window after saving (so that it syncs to the cloud).
+
 If you encounter a different error message, ensure that:
 - Your input Excel file is properly formatted with a column named "Full Text" containing the tweets.
 - You have provided valid file paths for both the input and output files.
