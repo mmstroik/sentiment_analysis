@@ -114,7 +114,7 @@ def run_sentiment_analysis_thread(
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     df = loop.run_until_complete(
-        sprocess_tweets_in_batches(
+        process_tweets_in_batches(
             df,
             token_buffer,
             update_progress_callback,
