@@ -12,7 +12,7 @@ from aiohttp import ClientSession
 from async_core_logic import process_tweets_in_batches
 
 
-"""GUI <-> CORE LOGIC COMMUNICATION"""
+"""GUI <-> CORE LOGIC CONNECTOR FUNCTIONS"""
 
 
 # Set the token and requests limits based on model selection

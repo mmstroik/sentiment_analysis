@@ -24,9 +24,7 @@ async def process_tweets_in_batches(
     batch_token_limit,
     batch_requests_limit,
 ):
-    log_callback("Calculating token counts for each tweet/sample...")
-    calculate_token_count(df, token_buffer)
-
+    calculate_token_count(df, token_buffer, log_callback)
     total = len(df)
     processed = 0
     async with ClientSession() as session:
@@ -47,7 +45,6 @@ async def process_tweets_in_batches(
             session,
             start_idx,
         )
-
         # Reprocess errored tweets
         await reprocess_errors(
             df,
@@ -210,7 +207,8 @@ async def call_openai_async(
                 return "Error"  # Return an error marker
 
 
-def calculate_token_count(df, token_buffer):
+def calculate_token_count(df, token_buffer, log_callback):
+    log_callback("Calculating token counts for each tweet/sample...")
     df["Token Count"] = df["Full Text"].apply(
         lambda tweet: len(ENCODING.encode(tweet)) + token_buffer
     )
