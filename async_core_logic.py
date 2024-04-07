@@ -14,7 +14,7 @@ ENCODING = tiktoken.get_encoding("cl100k_base")
 
 # Asynchronously processes tweets in batches (based on token counts)
 async def process_tweets_in_batches(
-    df,c
+    df,
     token_buffer: int,
     update_progress_callback,
     log_callback,
