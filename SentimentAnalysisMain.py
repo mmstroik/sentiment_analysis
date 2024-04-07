@@ -29,7 +29,7 @@ async def call_openai_async(
     system_prompt: str,
     user_prompt: str,
     model: str,
-    max_retries=5,
+    max_retries=6,
 ):
     payload = {
         "model": model,
@@ -59,7 +59,7 @@ async def call_openai_async(
                 retry_delay += 2
             else:
                 result = await response.text()
-                # Log the final failed attempt details
+                #todo
                 return "Error"  # Return an error marker
 
 
@@ -87,7 +87,6 @@ async def process_tweets_in_batches(
             batch_end_idx = calculate_batch_size(
                 df, batch_token_limit, batch_requests_limit, start_idx
             )
-
             # Process the batch
             log_message(
                 f"Processing batch {start_idx+1}-{batch_end_idx} of {total} tweets/samples..."
@@ -114,9 +113,45 @@ async def process_tweets_in_batches(
             start_idx = batch_end_idx
 
             if start_idx < len(df):
-                log_message(f"Waiting for rate limit timer...")
+                log_message("Waiting for rate limit timer...")
                 await timer
-        return df
+
+        errored_df = df[df['Sentiment'] == "Error"]
+        if not errored_df.empty:
+            log_message(f"Waiting for rate limit timer before reprocessing {len(errored_df)} errored tweets...")
+            await asyncio.sleep(60)  # Wait for 60 seconds before starting the reprocessing
+
+            total_errors = len(errored_df)
+            processed_errors = 0
+            start_idx = 0
+
+            while start_idx < len(errored_df):
+                batch_end_idx = calculate_batch_size(
+                    errored_df, batch_token_limit, batch_requests_limit, start_idx
+                )
+
+                # Reprocess the batch of errored tweets
+                batch = errored_df.iloc[start_idx:batch_end_idx]
+                tasks = [
+                    call_openai_async(session, tweet, system_prompt, user_prompt, model)
+                    for tweet in batch["Full Text"]
+                ]
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+
+                # Handle results for errored tweets
+                for tweet_idx, result in zip(batch.index, results):
+                    if isinstance(result, Exception):
+                        log_message(f"Error reprocessing text at row {tweet_idx}: {result}")
+                        df.at[tweet_idx, "Sentiment"] = "Final Error"
+                    else:
+                        df.at[tweet_idx, "Sentiment"] = result
+
+                processed_errors += len(results)
+                progress = (processed_errors / total_errors) * 95
+                update_progress_callback(progress + 5)  # Adjust progress callback for error processing
+                log_message(f"Reprocessed {processed_errors} of {total_errors} errored tweets.")
+                start_idx = batch_end_idx
+    return df
 
 
 def calculate_token_count(df, token_buffer):
@@ -141,6 +176,7 @@ def calculate_batch_size(df, batch_token_limit, batch_requests_limit, start_idx)
         else:
             break
     return batch_end_idx
+
 
 
 """GUI <-> CORE LOGIC COMMUNICATION"""
@@ -226,6 +262,7 @@ def run_sentiment_analysis_thread(
     update_progress_callback(100)
     log_message(f"Sentiment analysis results saved to {output_file}.")
     messagebox.showinfo("Success", "Sentiment analysis completed successfully.")
+    window.after(0, lambda: run_button.config(state=tk.NORMAL))
     return df
 
 
@@ -521,7 +558,7 @@ log_text_area.pack(pady=(5, 5))
 
 instructions_text = """
 1. Prepare and save your Excel file, with the text/tweets stored under a column titled "Full Text".
-    - Note: Don't save it in the shared OneDrive folder (or any restricted location). Use a local folder on your computer.
+    - Note: If the file is saved to a cloud drive (e.g., OneDrive), close the file before running the tool.
 
 2. Click on the "Browse" button under "Input File" and select the file containing the tweets.
 
