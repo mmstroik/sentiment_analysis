@@ -33,42 +33,22 @@ async def process_tweets_in_batches(
         start_idx = 0
         update_progress_callback(5)
 
-        while start_idx < len(df):
-            log_callback("Calculating size of next batch...")
-            batch_end_idx = calculate_batch_size(
-                df, batch_token_limit, batch_requests_limit, start_idx
-            )
-            log_callback(
-                f"Processing batch {start_idx+1}-{batch_end_idx} of {total} tweets/samples..."
-            )
-            # Set batch and send requests
-            batch = df.iloc[start_idx:batch_end_idx]
-            tasks = [
-                call_openai_async(session, tweet, system_prompt, user_prompt, model)
-                for tweet in batch["Full Text"]
-            ]
-            timer = asyncio.create_task(asyncio.sleep(60))
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-
-            # Handle results
-            for tweet_idx, result in zip(batch.index, results):
-                if isinstance(result, Exception):
-                    log_callback(f"Error processing text at row {tweet_idx}: {result}")
-                else:
-                    df.at[tweet_idx, "Sentiment"] = result
-
-            processed += len(results)
-            progress = (processed / total) * 95
-            update_progress_callback(progress)
-            log_callback(f"Processed {processed} of {total} tweets/samples.")
-            start_idx = batch_end_idx
-
-            if start_idx < len(df):
-                log_callback("Waiting for rate limit timer...")
-                await timer
+        await main_batch_processing_loop(
+            df,
+            update_progress_callback,
+            log_callback,
+            system_prompt,
+            user_prompt,
+            model,
+            batch_token_limit,
+            batch_requests_limit,
+            total,
+            processed,
+            session,
+            start_idx,
+        )
 
         # Reprocess errored tweets
-        errored_df = df[df["Sentiment"] == "Error"]
         await reprocess_errors(
             df,
             update_progress_callback,
@@ -79,9 +59,57 @@ async def process_tweets_in_batches(
             batch_token_limit,
             batch_requests_limit,
             session,
-            errored_df,
         )
     return df
+
+
+async def main_batch_processing_loop(
+    df,
+    update_progress_callback,
+    log_callback,
+    system_prompt,
+    user_prompt,
+    model,
+    batch_token_limit,
+    batch_requests_limit,
+    total,
+    processed,
+    session,
+    start_idx,
+):
+    while start_idx < len(df):
+        log_callback("Calculating size of next batch...")
+        batch_end_idx = calculate_batch_size(
+            df, batch_token_limit, batch_requests_limit, start_idx
+        )
+        log_callback(
+            f"Processing batch {start_idx+1}-{batch_end_idx} of {total} tweets/samples..."
+        )
+        # Set batch and send requests
+        batch = df.iloc[start_idx:batch_end_idx]
+        tasks = [
+            call_openai_async(session, tweet, system_prompt, user_prompt, model)
+            for tweet in batch["Full Text"]
+        ]
+        timer = asyncio.create_task(asyncio.sleep(60))
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Handle results
+        for tweet_idx, result in zip(batch.index, results):
+            if isinstance(result, Exception):
+                log_callback(f"Error processing text at row {tweet_idx}: {result}")
+            else:
+                df.at[tweet_idx, "Sentiment"] = result
+
+        processed += len(results)
+        progress = (processed / total) * 95
+        update_progress_callback(progress)
+        log_callback(f"Processed {processed} of {total} tweets/samples.")
+        start_idx = batch_end_idx
+
+        if start_idx < len(df):
+            log_callback("Waiting for rate limit timer...")
+            await timer
 
 
 # Asynchronously reprocesses errored tweets
@@ -95,8 +123,8 @@ async def reprocess_errors(
     batch_token_limit,
     batch_requests_limit,
     session,
-    errored_df,
 ):
+    errored_df = df[df["Sentiment"] == "Error"]
     if not errored_df.empty:
         log_callback(
             f"Waiting for rate limit timer before reprocessing {len(errored_df)} errored tweets..."
@@ -123,7 +151,9 @@ async def reprocess_errors(
             # Handle results for errored tweets
             for tweet_idx, result in zip(batch.index, results):
                 if isinstance(result, Exception):
-                    log_callback(f"Error reprocessing text at row {tweet_idx}: {result}")
+                    log_callback(
+                        f"Error reprocessing text at row {tweet_idx}: {result}"
+                    )
                     df.at[tweet_idx, "Sentiment"] = "Final Error"
                 else:
                     df.at[tweet_idx, "Sentiment"] = result
