@@ -8,7 +8,7 @@ import tiktoken_ext
 from tiktoken_ext import openai_public
 
 
-OPENAI_API_KEY = "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"
+OPENAI_API_KEY = "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"
 ENCODING = tiktoken.get_encoding("cl100k_base")
 
 
