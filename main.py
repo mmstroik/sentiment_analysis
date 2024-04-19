@@ -23,7 +23,7 @@ def select_model(gpt_model_var):
     }
     model = (
         "gpt-3.5-turbo"
-        if gpt_model_var.get() == "GPT-3 (Default)"
+        if gpt_model_var.get() == "GPT-3.5 (Default)"
         else "gpt-4-turbo-preview"
     )
     return (
