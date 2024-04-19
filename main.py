@@ -149,7 +149,7 @@ def setup_progress_bar(main_frame, progress_var):
         progress_bar = ttk.Progressbar(
             main_frame, length=400, variable=progress_var, maximum=100
         )
-        progress_bar.pack(pady=10)
+        progress_bar.pack(before=log_label, pady=10)
         main_frame.progress_bar = progress_bar
     else:
         progress_bar = main_frame.progress_bar
