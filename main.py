@@ -18,13 +18,13 @@ from async_core_logic import process_tweets_in_batches
 # Set the token and requests limits based on model selection
 def select_model(gpt_model_var):
     model_limits = {
-        "gpt-3.5-turbo": {"token_limit": 80000, "requests_limit": 5000},
-        "gpt-4-turbo-preview": {"token_limit": 450000, "requests_limit": 500},
+        "gpt-3.5-turbo": {"token_limit": 160000, "requests_limit": 5000},
+        "gpt-4-turbo": {"token_limit": 600000, "requests_limit": 5000},
     }
     model = (
         "gpt-3.5-turbo"
         if gpt_model_var.get() == "GPT-3.5 (Default)"
-        else "gpt-4-turbo-preview"
+        else "gpt-4-turbo"
     )
     return (
         model,
@@ -313,7 +313,7 @@ customization_dropdown.pack()
 gpt_model_label = tk.Label(main_frame, text="GPT Model:", font=("Segoe UI", 12))
 gpt_model_label.pack(pady=(20, 0))
 gpt_model_var = tk.StringVar()
-gpt_model_var.set("GPT-3 (Default)")  # Default selection
+gpt_model_var.set("GPT-3.5 (Default)")  # Default selection
 gpt_model_dropdown = ttk.Combobox(
     main_frame,
     textvariable=gpt_model_var,
