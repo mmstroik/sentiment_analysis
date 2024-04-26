@@ -10,6 +10,7 @@ import sv_ttk
 import pandas as pd
 
 from async_core_logic import process_tweets_in_batches
+from bw_api_handling import update_bw_sentiment
 
 
 """GUI <-> CORE LOGIC CONNECTOR FUNCTIONS"""
@@ -22,9 +23,7 @@ def select_model(gpt_model_var):
         "gpt-4-turbo": {"token_limit": 600000, "requests_limit": 5000},
     }
     model = (
-        "gpt-3.5-turbo"
-        if gpt_model_var.get() == "GPT-3.5 (Default)"
-        else "gpt-4-turbo"
+        "gpt-3.5-turbo" if gpt_model_var.get() == "GPT-3.5 (Default)" else "gpt-4-turbo"
     )
     return (
         model,
@@ -111,6 +110,15 @@ def run_sentiment_analysis_thread(
     if "Sentiment" not in df.columns:
         df["Sentiment"] = ""
 
+    if bw_checkbox_var.get():
+        if "Query Id" not in df.columns or "Resource Id" not in df.columns:
+            messagebox.showerror(
+                "Error",
+                "The input file does not contain the required columns 'Query Id' or 'Resource Id'.",
+            )
+            window.after(0, lambda: run_button.config(state=tk.NORMAL))
+            return
+
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     df = loop.run_until_complete(
@@ -127,9 +135,19 @@ def run_sentiment_analysis_thread(
         )
     )
     loop.close()
-    log_message(f"Saving results to excel...")
+
+    if bw_checkbox_var.get():
+        log_message(f"Updating sentiment values in Brandwatch...")
+        response = update_bw_sentiment(df)
+        if "errors" in response:
+            log_message(
+                "An error occurred while updating sentiment values in Brandwatch."
+            )
+        else:
+            log_message("{} mentions updated".format(len(response)))
 
     # Remove the token count column and save the df to the output file
+    log_message(f"Saving results to excel...")
     df.drop(columns=["Token Count"], inplace=True)
     update_progress_callback(98)
     df.to_excel(output_file, index=False)
@@ -290,6 +308,24 @@ output_button = tk.Button(
     main_frame, text="Browse", font=("Segoe UI", 12), command=browse_output_file
 )
 output_button.pack()
+
+# BW API update checkbox
+bw_checkbox_var = tk.IntVar()
+style = ttk.Style()
+style.configure("TCheckbutton", font=("Segoe UI", 14))
+bw_checkbox = ttk.Checkbutton(
+    main_frame,
+    text="Update sentiment values in Brandwatch",
+    variable=bw_checkbox_var,
+    style="TCheckbutton",
+)
+bw_checkbox.pack(pady=(20, 0))
+bw_checkbox_label = tk.Label(
+    main_frame,
+    text="(Requires 'Query Id' and 'Resource Id' columns in input file)",
+    font=("Segoe UI", 10, "italic"),
+)
+bw_checkbox_label.pack()
 
 # Customization option packing
 customization_label = tk.Label(
