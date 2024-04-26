@@ -23,9 +23,7 @@ def select_model(gpt_model_var):
         "gpt-4-turbo": {"token_limit": 600000, "requests_limit": 5000},
     }
     model = (
-        "gpt-3.5-turbo"
-        if gpt_model_var.get() == "GPT-3.5 (Default)"
-        else "gpt-4-turbo"
+        "gpt-3.5-turbo" if gpt_model_var.get() == "GPT-3.5 (Default)" else "gpt-4-turbo"
     )
     return (
         model,
@@ -137,12 +135,16 @@ def run_sentiment_analysis_thread(
         )
     )
     loop.close()
-    
+
     if bw_checkbox_var.get():
         log_message(f"Updating sentiment values in Brandwatch...")
-        df["Sentiment"] = df["Sentiment"].str.lower()  # Convert sentiment values to lowercase
-        sentiment_list = df[["Query Id", "Resource Id", "Sentiment"]].rename(columns={"Query Id": "queryid", "Resource Id": "resourceid", "Sentiment": "sentiment"}).to_dict('records')
-        update_bw_sentiment(sentiment_list, log_message)
+        response = update_bw_sentiment(df)
+        if "errors" in response:
+            log_message(
+                "An error occurred while updating sentiment values in Brandwatch."
+            )
+        else:
+            log_message("{} mentions updated".format(len(response)))
 
     # Remove the token count column and save the df to the output file
     log_message(f"Saving results to excel...")
@@ -307,6 +309,24 @@ output_button = tk.Button(
 )
 output_button.pack()
 
+# BW API update checkbox
+bw_checkbox_var = tk.IntVar()
+style = ttk.Style()
+style.configure("TCheckbutton", font=("Segoe UI", 14))
+bw_checkbox = ttk.Checkbutton(
+    main_frame,
+    text="Update sentiment values in Brandwatch",
+    variable=bw_checkbox_var,
+    style="TCheckbutton",
+)
+bw_checkbox.pack(pady=(20, 0))
+bw_checkbox_label = tk.Label(
+    main_frame,
+    text="(Requires 'Query Id' and 'Resource Id' columns in input file)",
+    font=("Segoe UI", 10, "italic"),
+)
+bw_checkbox_label.pack()
+
 # Customization option packing
 customization_label = tk.Label(
     main_frame, text="\nCustomization Option:", font=("Segoe UI", 12)
@@ -324,13 +344,6 @@ customization_dropdown = ttk.Combobox(
 )
 customization_dropdown.bind("<<ComboboxSelected>>", on_customization_selected)
 customization_dropdown.pack()
-
-# BW API update checkbox
-bw_checkbox_label = tk.Label(main_frame, text="Update sentiment values in Brandwatch?", font=("Segoe UI", 12))
-bw_checkbox_label.pack(pady=(20, 0))
-bw_checkbox_var = tk.IntVar()
-bw_checkbox = ttk.Checkbutton(main_frame, variable=bw_checkbox_var)
-bw_checkbox.pack()
 
 # GPT Model Selection
 gpt_model_label = tk.Label(main_frame, text="GPT Model:", font=("Segoe UI", 12))
