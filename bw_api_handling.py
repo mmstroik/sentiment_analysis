@@ -1,29 +1,42 @@
-from bcr_api.bwproject import BWProject
-from bcr_api.bwresources import BWSentiment
-import logging
+import requests
+import json
 
-logger = logging.getLogger("bcr_api")
 
-USER_NAME = "***REMOVED***"
-PROJECT_NAME = "Quadrant"
 API_TOKEN = "***REMOVED***"
-PROJECT_ID = "***REMOVED***"
+URL = "https://api.brandwatch.com/projects/***REMOVED***/data/mentions"
 
-class CallbackHandler(logging.Handler):
-    def __init__(self, callback):
-        super().__init__()
-        self.callback = callback
 
-    def emit(self, record):
-        msg = self.format(record)
-        self.callback(msg)
+def update_bw_sentiment(df):
+    updated_sentiment_dicts = prepare_data_for_bw(df)
+    data = json.dumps(updated_sentiment_dicts)
+    response = bw_request(data)
+    return response
 
-def update_bw_sentiment(updated_sentiment_dict, log_callback):
-    handler = CallbackHandler(log_callback)
-    logger.addHandler(handler)
 
-    project = BWProject(username=USER_NAME, token=API_TOKEN, project_name=PROJECT_NAME, project_id=PROJECT_ID)
-    mentions = BWSentiment(project)
-    mentions.patch_mentions(updated_sentiment_dict)
+def prepare_data_for_bw(df):
+    df_copy = df.copy()
+    df_copy["Sentiment"] = df_copy[
+        "Sentiment"
+    ].str.lower()  # Convert sentiment values to lowercase
+    sentiment_list = (
+        df_copy[["Query Id", "Resource Id", "Sentiment"]]
+        .rename(
+            columns={
+                "Query Id": "queryId",
+                "Resource Id": "resourceId",
+                "Sentiment": "sentiment",
+            }
+        )
+        .to_dict("records")
+    )
 
-    logger.removeHandler(handler)
+    return sentiment_list
+
+
+def bw_request(data):
+    headers = {}
+    headers["Authorization"] = "Bearer {}".format(API_TOKEN)
+    headers["Content-type"] = "application/json"
+
+    response = requests.patch(URL, data=data, headers=headers)
+    return response.json()
