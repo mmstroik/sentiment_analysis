@@ -114,7 +114,7 @@ def run_sentiment_analysis_thread(
         if "Query Id" not in df.columns or "Resource Id" not in df.columns:
             messagebox.showerror(
                 "Error",
-                "The input file does not contain the required columns 'Query Id' or 'Resource Id'.",
+                "The input file does not contain the required BW columns 'Query Id' or 'Resource Id'.",
             )
             window.after(0, lambda: run_button.config(state=tk.NORMAL))
             return
@@ -138,13 +138,7 @@ def run_sentiment_analysis_thread(
 
     if bw_checkbox_var.get():
         log_message(f"Updating sentiment values in Brandwatch...")
-        response = update_bw_sentiment(df)
-        if "errors" in response:
-            log_message(
-                "An error occurred while updating sentiment values in Brandwatch."
-            )
-        else:
-            log_message("{} mentions updated".format(len(response)))
+        update_bw_sentiment(df, log_message)
 
     # Remove the token count column and save the df to the output file
     log_message(f"Saving results to excel...")

@@ -6,20 +6,19 @@ API_TOKEN = "1536f504-8ec2-4bbf-bee6-4ee58e3c5308"
 URL = "https://api.brandwatch.com/projects/1998281989/data/mentions"
 
 
-def update_bw_sentiment(df):
-    updated_sentiment_dicts = prepare_data_for_bw(df)
-    data = json.dumps(updated_sentiment_dicts)
-    response = bw_request(data)
-    return response
+def update_bw_sentiment(df, log_callback):
+    cleaned_sentiment_dicts = prepare_data_for_bw(df)
+    data = json.dumps(cleaned_sentiment_dicts)
+    bw_request(data, log_callback)
 
 
 def prepare_data_for_bw(df):
-    df_copy = df.copy()
-    df_copy["Sentiment"] = df_copy[
+    df_bw = df.copy()
+    df_bw["Sentiment"] = df_bw[
         "Sentiment"
-    ].str.lower()  # Convert sentiment values to lowercase
-    sentiment_list = (
-        df_copy[["Query Id", "Resource Id", "Sentiment"]]
+    ].str.lower()  # Convert sent values to lowercase
+    sentiment_dicts = (
+        df_bw[["Query Id", "Resource Id", "Sentiment"]]
         .rename(
             columns={
                 "Query Id": "queryId",
@@ -29,14 +28,35 @@ def prepare_data_for_bw(df):
         )
         .to_dict("records")
     )
+    return sentiment_dicts
 
-    return sentiment_list
 
-
-def bw_request(data):
+def bw_request(data, log_callback):
     headers = {}
     headers["Authorization"] = "Bearer {}".format(API_TOKEN)
     headers["Content-type"] = "application/json"
 
     response = requests.patch(URL, data=data, headers=headers)
-    return response.json()
+    try:
+        response.json()
+    except ValueError as e:
+        # handles non-json responses
+        if "Expecting value: line 1 column 1 (char 0)" in str(e):
+            error_message = "ERROR: There was an error with this request: \n{}".format(
+                response.text
+            )
+            log_callback(error_message)
+        else:
+            error_message = "ERROR: An unexpected ValueError occurred: {}".format(e)
+            log_callback(error_message)
+    else:
+        if "errors" in response.json() and response.json()["errors"]:
+            error_message = "ERROR: There was an error with this request: \n{}".format(
+                response.json()["errors"]
+            )
+            log_callback(error_message)
+        else:
+            success_message = "Successfully updated {} mentions.".format(
+                len(response.json())
+            )
+            log_callback(success_message)
