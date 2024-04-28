@@ -5,12 +5,15 @@ import sys
 import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext, ttk
+import tkinter.font as tkFont
+import webbrowser
 
 import sv_ttk
 import pandas as pd
 
 from async_core_logic import process_tweets_in_batches
 from bw_api_handling import update_bw_sentiment
+import darkdetect
 
 
 """GUI <-> CORE LOGIC CONNECTOR FUNCTIONS"""
@@ -68,7 +71,7 @@ def run_sentiment_analysis():
     token_buffer, system_prompt, user_prompt = set_prompts(
         customization_option, company_entry, system_prompt_entry, user_prompt_entry
     )
-    progress_bar = setup_progress_bar(main_frame, progress_var)
+    progress_bar = setup_progress_bar(placeholder_frame, progress_var)
     progress_var.set(0)
     run_button.config(state=tk.DISABLED)
     try:
@@ -104,7 +107,7 @@ def run_sentiment_analysis_thread(
     batch_token_limit,
     batch_requests_limit,
 ):
-    log_message(f"Starting sentiment analysis for text samples in {input_file}.")
+    log_message(f"Starting sentiment analysis for text samples in {os.path.basename(input_file)}.")
 
     df = pd.read_excel(input_file)
     if "Sentiment" not in df.columns:
@@ -114,7 +117,7 @@ def run_sentiment_analysis_thread(
         if "Query Id" not in df.columns or "Resource Id" not in df.columns:
             messagebox.showerror(
                 "Error",
-                "The input file does not contain the required columns 'Query Id' or 'Resource Id'.",
+                "The input file does not contain the required BW columns 'Query Id' or 'Resource Id'.",
             )
             window.after(0, lambda: run_button.config(state=tk.NORMAL))
             return
@@ -138,13 +141,7 @@ def run_sentiment_analysis_thread(
 
     if bw_checkbox_var.get():
         log_message(f"Updating sentiment values in Brandwatch...")
-        response = update_bw_sentiment(df)
-        if "errors" in response:
-            log_message(
-                "An error occurred while updating sentiment values in Brandwatch."
-            )
-        else:
-            log_message("{} mentions updated".format(len(response)))
+        update_bw_sentiment(df, log_message)
 
     # Remove the token count column and save the df to the output file
     log_message(f"Saving results to excel...")
@@ -162,15 +159,15 @@ def run_sentiment_analysis_thread(
 
 
 # Set up the progress bar widget that gets updated by the core logic
-def setup_progress_bar(main_frame, progress_var):
-    if not hasattr(main_frame, "progress_bar"):
+def setup_progress_bar(placeholder_frame, progress_var):
+    if not hasattr(placeholder_frame, "progress_bar"):
         progress_bar = ttk.Progressbar(
-            main_frame, length=400, variable=progress_var, maximum=100
+            placeholder_frame, length=400, variable=progress_var, maximum=100
         )
-        progress_bar.pack(before=log_label, pady=10)
-        main_frame.progress_bar = progress_bar
+        progress_bar.pack(fill='both', expand=True)
+        placeholder_frame.progress_bar = progress_bar
     else:
-        progress_bar = main_frame.progress_bar
+        progress_bar = placeholder_frame.progress_bar
     return progress_bar
 
 
@@ -269,6 +266,8 @@ def set_dpi_awareness():
         print(f"Error setting DPI Awareness: {e}")
 
 
+
+
 """GUI SETUP"""
 
 set_dpi_awareness()
@@ -300,8 +299,8 @@ input_button = tk.Button(
 input_button.pack()
 
 # Output file packing
-output_label = tk.Label(main_frame, text="\nOutput File:", font=("Segoe UI", 12))
-output_label.pack()
+output_label = tk.Label(main_frame, text="Output File:", font=("Segoe UI", 12))
+output_label.pack(pady=(20, 0))
 output_entry = tk.Entry(main_frame, width=50, font=("Segoe UI", 11))
 output_entry.pack()
 output_button = tk.Button(
@@ -329,9 +328,9 @@ bw_checkbox_label.pack()
 
 # Customization option packing
 customization_label = tk.Label(
-    main_frame, text="\nCustomization Option:", font=("Segoe UI", 12)
+    main_frame, text="Customization Option:", font=("Segoe UI", 12)
 )
-customization_label.pack()
+customization_label.pack(pady=(20, 0))
 customization_var = tk.StringVar()
 customization_var.set("Default")
 customization_dropdown = ttk.Combobox(
@@ -418,17 +417,20 @@ run_button = tk.Button(
 )
 run_button.pack()
 
+placeholder_frame = tk.Frame(main_frame, height=20, width=400)
+placeholder_frame.pack(pady=10)
+placeholder_frame.pack_propagate(False)
+
 # Logging section
-log_label = tk.Label(main_frame, text="\nLog Messages:", font=("Segoe UI", 12))
-log_label.pack(pady=(5, 0))
+log_label = tk.Label(main_frame, text="Log Messages:", font=("Segoe UI", 12))
+log_label.pack(pady=(0, 0))
 log_text_area = scrolledtext.ScrolledText(
     main_frame, wrap=tk.WORD, width=55, height=8, font=("Segoe UI", 11)
 )
 log_text_area.configure(state="disabled")
-log_text_area.pack(pady=(5, 5))
+log_text_area.pack(pady=(2, 5))
 
-instructions_text = """
-1. Prepare and save your Excel file, with the text/tweets stored under a column titled "Full Text".
+instructions_text = """1. Prepare and save your Excel file, with the text/tweets stored under a column titled "Full Text".
     - Note: If the file is saved to a cloud drive (e.g., OneDrive), close the file before running the tool.
 
 2. Click on the "Browse" button under "Input File" and select the file containing the tweets.
@@ -455,12 +457,47 @@ instructions_label = tk.Label(
 )
 instructions_label.pack(fill="x")
 instructions_text_area = scrolledtext.ScrolledText(
-    instructions_frame, wrap=tk.WORD, width=60, height=36, font=("Segoe UI", 11)
+    instructions_frame, wrap=tk.WORD, width=60, height=30, font=("Segoe UI", 11)
 )
 instructions_text_area.insert(tk.END, instructions_text)
 instructions_text_area.configure(state="disabled")
 instructions_text_area.pack()
 
-sv_ttk.set_theme("dark")
+
+class Linkbutton(ttk.Button):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.font = tkFont.Font(family="Segoe UI", size=11)
+        style = ttk.Style()
+        style.configure("Link.TLabel", foreground="#357fde", font=self.font)
+        self.configure(style="Link.TLabel", cursor="hand2")
+        self.bind("<Enter>", self.on_mouse_enter)
+        self.bind("<Leave>", self.on_mouse_leave)
+
+    def on_mouse_enter(self, event):
+        self.font.configure(underline=True)
+
+    def on_mouse_leave(self, event):
+        self.font.configure(underline=False)
+
+docs_link = Linkbutton(
+    instructions_frame,
+    text="Full Documentation/Instructions",
+    command=lambda: webbrowser.open("https://docs.google.com/document/d/1R5qPnn5xbGOv3aZk6Cf5egfvrMVJ6TI2v_xg6FiFqp8/edit")
+)
+docs_link.pack(pady=(5, 2))
+
+if darkdetect.isDark():
+    sv_ttk.set_theme("dark")
+    style = ttk.Style()
+    style.map("Link.TLabel", foreground=[("active", "#357fde"), ("!active", "#357fde")])
+else:
+    sv_ttk.set_theme("light")
+    style = ttk.Style()
+    style.map("Link.TLabel", foreground=[("active", "#357fde"), ("!active", "#357fde")])
+
 # Start the GUI event loop
 window.mainloop()
+
