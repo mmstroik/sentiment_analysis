@@ -15,7 +15,6 @@ ENCODING = tiktoken.get_encoding("cl100k_base")
 # Asynchronously processes tweets in batches (based on token counts)
 async def process_tweets_in_batches(
     df,
-    token_buffer: int,
     update_progress_callback,
     log_callback,
     system_prompt,
@@ -24,7 +23,7 @@ async def process_tweets_in_batches(
     batch_token_limit,
     batch_requests_limit,
 ):
-    calculate_token_count(df, token_buffer, log_callback)
+    calculate_token_count(df, system_prompt, user_prompt, log_callback)
     total = len(df)
     processed = 0
     async with ClientSession() as session:
@@ -80,7 +79,7 @@ async def main_batch_processing_loop(
             df, batch_token_limit, batch_requests_limit, start_idx
         )
         log_callback(
-            f"Processing batch {start_idx+1}-{batch_end_idx} of {total} tweets/samples..."
+            f"Processing batch {start_idx+1}-{batch_end_idx} of {total} mentions..."
         )
         # Set batch index and send requests
         batch = df.iloc[start_idx:batch_end_idx]
@@ -206,12 +205,13 @@ async def call_openai_async(
                 return "Error"
 
 
-def calculate_token_count(df, token_buffer, log_callback):
+def calculate_token_count(df, system_prompt, user_prompt, log_callback):
     log_callback("Calculating token counts for each mention...")
+    full_user_prompt = f'{user_prompt} ""\nSentiment:'
+    prompt_token_count = len(ENCODING.encode(system_prompt + full_user_prompt))
     df["Token Count"] = df["Full Text"].apply(
-        lambda tweet: len(ENCODING.encode(tweet)) + token_buffer
+        lambda tweet: len(ENCODING.encode(tweet)) + prompt_token_count + 1
     )
-
 
 def calculate_batch_size(df, batch_token_limit, batch_requests_limit, start_idx):
 
