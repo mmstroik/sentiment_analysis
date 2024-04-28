@@ -42,16 +42,16 @@ def bw_request(data, log_callback):
     except ValueError as e:
         # handles non-json responses
         if "Expecting value: line 1 column 1 (char 0)" in str(e):
-            error_message = "ERROR: There was an error with this request: \n{}".format(
+            error_message = "ERROR: An error occurred while updating sentiment values in Brandwatch: \n{}".format(
                 response.text
             )
             log_callback(error_message)
         else:
-            error_message = "ERROR: An unexpected ValueError occurred: {}".format(e)
+            error_message = "ERROR: An error occurred while updating sentiment values in Brandwatch: {}".format(e)
             log_callback(error_message)
     else:
         if "errors" in response.json() and response.json()["errors"]:
-            error_message = "ERROR: There was an error with this request: \n{}".format(
+            error_message = "ERROR: An error occurred while updating sentiment values in Brandwatch: \n{}".format(
                 response.json()["errors"]
             )
             log_callback(error_message)
