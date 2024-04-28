@@ -15,12 +15,12 @@ IMPORTANT: Do NOT post this list to the issue-tracker. Use it as a basis for
             tracking down the missing module yourself. Thanks!
 
 missing module named pyimod02_importers - imported by C:\Users\mmstr\miniconda3\envs\sentiment\Lib\site-packages\PyInstaller\hooks\rthooks\pyi_rth_pkgutil.py (delayed), C:\Users\mmstr\miniconda3\envs\sentiment\Lib\site-packages\PyInstaller\hooks\rthooks\pyi_rth_pkgres.py (delayed)
-missing module named pwd - imported by shutil (delayed, optional), tarfile (optional), pathlib (delayed, optional), subprocess (delayed, conditional, optional), posixpath (delayed, conditional, optional), http.server (delayed, optional), netrc (delayed, conditional), getpass (delayed)
+missing module named pwd - imported by posixpath (delayed, conditional, optional), shutil (delayed, optional), tarfile (optional), pathlib (delayed, optional), subprocess (delayed, conditional, optional), http.server (delayed, optional), netrc (delayed, conditional), getpass (delayed)
 missing module named grp - imported by shutil (delayed, optional), tarfile (optional), pathlib (delayed, optional), subprocess (delayed, conditional, optional)
 missing module named _posixsubprocess - imported by subprocess (conditional), multiprocessing.util (delayed)
 missing module named fcntl - imported by subprocess (optional)
 missing module named typing_extensions - imported by pandas._typing (conditional), attr._compat (conditional, optional), urllib3._collections (conditional), urllib3.contrib.emscripten.fetch (conditional), pkg_resources._vendor.packaging.metadata (conditional, optional), packaging.metadata (conditional, optional)
-missing module named posix - imported by shutil (conditional), importlib._bootstrap_external (conditional), os (conditional, optional), posixpath (optional)
+missing module named posix - imported by os (conditional, optional), shutil (conditional), importlib._bootstrap_external (conditional), posixpath (optional)
 missing module named resource - imported by posix (top-level)
 missing module named _manylinux - imported by pkg_resources._vendor.packaging._manylinux (delayed, optional), packaging._manylinux (delayed, optional)
 missing module named jnius - imported by pkg_resources._vendor.platformdirs.android (delayed, optional)
@@ -175,7 +175,6 @@ missing module named numpy.lib.real - imported by numpy.lib (delayed), numpy.tes
 missing module named numpy.lib.iscomplexobj - imported by numpy.lib (delayed), numpy.testing._private.utils (delayed)
 missing module named numpy.ufunc - imported by numpy (top-level), numpy._typing (top-level), numpy.testing.overrides (top-level)
 missing module named psutil - imported by numpy.testing._private.utils (delayed, optional)
-missing module named win32pdh - imported by numpy.testing._private.utils (delayed, conditional)
 missing module named numpy.isinf - imported by numpy (top-level), numpy.testing._private.utils (top-level)
 missing module named numpy.isnan - imported by numpy (top-level), numpy.testing._private.utils (top-level)
 missing module named numpy.isfinite - imported by numpy (top-level), numpy.testing._private.utils (top-level)
