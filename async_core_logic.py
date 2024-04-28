@@ -82,7 +82,7 @@ async def main_batch_processing_loop(
         log_callback(
             f"Processing batch {start_idx+1}-{batch_end_idx} of {total} tweets/samples..."
         )
-        # Set batch and send requests
+        # Set batch index and send requests
         batch = df.iloc[start_idx:batch_end_idx]
         tasks = [
             call_openai_async(session, tweet, system_prompt, user_prompt, model)
@@ -99,9 +99,9 @@ async def main_batch_processing_loop(
                 df.at[tweet_idx, "Sentiment"] = result
 
         processed += len(results)
-        progress = (processed / total) * 95
+        progress = (processed / total) * 90
         update_progress_callback(progress)
-        log_callback(f"Processed {processed} of {total} tweets/samples.")
+        log_callback(f"Progress: Processed {processed} of {total} mentions.")
         start_idx = batch_end_idx
 
         if start_idx < len(df):
@@ -109,7 +109,6 @@ async def main_batch_processing_loop(
             await timer
 
 
-# Asynchronously reprocesses errored tweets
 async def reprocess_errors(
     df,
     update_progress_callback,
@@ -124,7 +123,7 @@ async def reprocess_errors(
     errored_df = df[df["Sentiment"].isin(["Error", ""])]
     if not errored_df.empty:
         log_callback(
-            f"Waiting for rate limit timer before reprocessing {len(errored_df)} errored tweets..."
+            f"Waiting for rate limit timer before reprocessing {len(errored_df)} errored mentions..."
         )
         await asyncio.sleep(60)  # Wait for 60 seconds before starting the reprocessing
 
@@ -161,7 +160,7 @@ async def reprocess_errors(
                 progress + 5
             )  # Adjust progress callback for error processing
             log_callback(
-                f"Reprocessed {processed_errors} of {total_errors} errored tweets."
+                f"Reprocessed {processed_errors} of {total_errors} errored mentions."
             )
             start_idx = batch_end_idx
 
@@ -204,17 +203,16 @@ async def call_openai_async(
             else:
                 result = await response.text()
                 # todo
-                return "Error"  # Return an error marker
+                return "Error"
 
 
 def calculate_token_count(df, token_buffer, log_callback):
-    log_callback("Calculating token counts for each tweet/sample...")
+    log_callback("Calculating token counts for each mention...")
     df["Token Count"] = df["Full Text"].apply(
         lambda tweet: len(ENCODING.encode(tweet)) + token_buffer
     )
 
 
-# Calculate batch size
 def calculate_batch_size(df, batch_token_limit, batch_requests_limit, start_idx):
 
     batch_token_count = 0
