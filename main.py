@@ -95,7 +95,6 @@ def run_sentiment_analysis():
 def run_sentiment_analysis_thread(
     input_file,
     output_file,
-    token_buffer,
     update_progress_callback,
     system_prompt,
     user_prompt,
@@ -138,7 +137,6 @@ def run_sentiment_analysis_thread(
     df = loop.run_until_complete(
         process_tweets_in_batches(
             df,
-            token_buffer,
             update_progress_callback,
             log_message,
             system_prompt,
