@@ -40,19 +40,16 @@ def set_prompts(
     customization_option, company_entry, system_prompt_entry, user_prompt_entry
 ):
     if customization_option == "Default":
-        token_buffer = 31
         system_prompt = "Classify the sentiment of the following Text in one word from this list [Positive, Neutral, Negative]."
         user_prompt = "Text:"
     elif customization_option == "Company":
         company = company_entry.get()
-        token_buffer = 34
         system_prompt = f"Classify the sentiment of the following Text toward {company} in one word from this list [Positive, Neutral, Negative]."
         user_prompt = "Text:"
     elif customization_option == "Custom":
-        token_buffer = 40
         system_prompt = system_prompt_entry.get("1.0", tk.END).strip()
         user_prompt = user_prompt_entry.get()
-    return token_buffer, system_prompt, user_prompt
+    return system_prompt, user_prompt
 
 
 # Main function to run sentiment analysis
@@ -68,7 +65,7 @@ def run_sentiment_analysis():
         )
         return
     model, batch_token_limit, batch_requests_limit = select_model(gpt_model_var)
-    token_buffer, system_prompt, user_prompt = set_prompts(
+    system_prompt, user_prompt = set_prompts(
         customization_option, company_entry, system_prompt_entry, user_prompt_entry
     )
     progress_bar = setup_progress_bar(placeholder_frame, progress_var)
@@ -80,7 +77,6 @@ def run_sentiment_analysis():
             args=(
                 input_file,
                 output_file,
-                token_buffer,
                 update_progress_gui,
                 system_prompt,
                 user_prompt,
@@ -107,11 +103,23 @@ def run_sentiment_analysis_thread(
     batch_token_limit,
     batch_requests_limit,
 ):
-    log_message(f"Starting sentiment analysis for text samples in {os.path.basename(input_file)}.")
+    log_message(
+        f"Starting sentiment analysis for text samples in {os.path.basename(input_file)}."
+    )
 
     df = pd.read_excel(input_file)
-    if "Sentiment" not in df.columns:
-        df["Sentiment"] = ""
+    if "Full Text" not in df.columns:
+        df = pd.read_excel(input_file, skiprows=9)
+
+    if "Full Text" not in df.columns:
+        messagebox.showerror(
+            "Error",
+            "The input file does not contain the required column 'Full Text'.",
+        )
+        window.after(0, lambda: run_button.config(state=tk.NORMAL))
+        return
+    
+    log_message("'Full Text' column found.")
 
     if bw_checkbox_var.get():
         if "Query Id" not in df.columns or "Resource Id" not in df.columns:
@@ -121,6 +129,9 @@ def run_sentiment_analysis_thread(
             )
             window.after(0, lambda: run_button.config(state=tk.NORMAL))
             return
+        
+    if "Sentiment" not in df.columns:
+        df["Sentiment"] = ""
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -164,7 +175,7 @@ def setup_progress_bar(placeholder_frame, progress_var):
         progress_bar = ttk.Progressbar(
             placeholder_frame, length=400, variable=progress_var, maximum=100
         )
-        progress_bar.pack(fill='both', expand=True)
+        progress_bar.pack(fill=tk.BOTH, expand=True)
         placeholder_frame.progress_bar = progress_bar
     else:
         progress_bar = placeholder_frame.progress_bar
@@ -264,8 +275,6 @@ def set_dpi_awareness():
         pass
     except Exception as e:
         print(f"Error setting DPI Awareness: {e}")
-
-
 
 
 """GUI SETUP"""
@@ -482,10 +491,13 @@ class Linkbutton(ttk.Button):
     def on_mouse_leave(self, event):
         self.font.configure(underline=False)
 
+
 docs_link = Linkbutton(
     instructions_frame,
     text="Full Documentation/Instructions",
-    command=lambda: webbrowser.open("https://docs.google.com/document/d/1R5qPnn5xbGOv3aZk6Cf5egfvrMVJ6TI2v_xg6FiFqp8/edit")
+    command=lambda: webbrowser.open(
+        "https://docs.google.com/document/d/1R5qPnn5xbGOv3aZk6Cf5egfvrMVJ6TI2v_xg6FiFqp8/edit"
+    ),
 )
 docs_link.pack(pady=(5, 2))
 
@@ -500,4 +512,3 @@ else:
 
 # Start the GUI event loop
 window.mainloop()
-
