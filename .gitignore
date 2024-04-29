@@ -4,3 +4,4 @@ Sentiment-Analysis.spec
 read_protected_excel.py
 build/
 dist/
+Sentiment-Analysis-Tool.spec
