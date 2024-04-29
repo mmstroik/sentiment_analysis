@@ -95,7 +95,7 @@ def run_sentiment_analysis():
 def run_sentiment_analysis_thread(
     input_file,
     output_file,
-    update_progress_callback,
+    update_progress_gui,
     system_prompt,
     user_prompt,
     model,
@@ -103,7 +103,7 @@ def run_sentiment_analysis_thread(
     batch_requests_limit,
 ):
     log_message(
-        f"Starting sentiment analysis for text samples in {os.path.basename(input_file)}."
+        f"Reading file: '{os.path.basename(input_file)}'."
     )
 
     df = pd.read_excel(input_file)
@@ -131,13 +131,13 @@ def run_sentiment_analysis_thread(
         
     if "Sentiment" not in df.columns:
         df["Sentiment"] = ""
-
+    log_message(f"Starting sentiment analysis with {model}...")
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     df = loop.run_until_complete(
         process_tweets_in_batches(
             df,
-            update_progress_callback,
+            update_progress_gui,
             log_message,
             system_prompt,
             user_prompt,
@@ -155,9 +155,9 @@ def run_sentiment_analysis_thread(
     # Remove the token count column and save the df to the output file
     log_message(f"Saving results to excel...")
     df.drop(columns=["Token Count"], inplace=True)
-    update_progress_callback(98)
+    update_progress_gui(98)
     df.to_excel(output_file, index=False)
-    update_progress_callback(100)
+    update_progress_gui(100)
     log_message(f"Sentiment analysis results saved to {output_file}.")
     messagebox.showinfo("Success", "Sentiment analysis completed successfully.")
     window.after(0, lambda: run_button.config(state=tk.NORMAL))
@@ -437,26 +437,30 @@ log_text_area = scrolledtext.ScrolledText(
 log_text_area.configure(state="disabled")
 log_text_area.pack(pady=(2, 5))
 
-instructions_text = """1. Prepare and save your Excel file, with the text/tweets stored under a column titled "Full Text".
-    - Note: If the file is saved to a cloud drive (e.g., OneDrive), close the file before running the tool.
+instructions_text = """1. Ensure your input file is a .xlsx and contains a column named "Full Text".
+    - Note: There can be other columns in the file, and column headers can be in row 10 (BW export format).
 
-2. Click on the "Browse" button under "Input File" and select the file containing the tweets.
+2. Click on the "Browse" button under "Input File" and select the file containing the mentions/tweets.
+    - Note: If the file is saved to a cloud drive (OneDrive), close it before running the tool.
 
-3. Click on the "Browse" button next to "Output File" and choose a (local) location and new filename for the output Excel file.
+3. Click on the "Browse" button under "Output File" and choose a location and identifiable filename for the output file.
 
-4. (Optional) Select a customization option:
+4. (Optional): Update sentiment values in Brandwatch (will also mark updated mentions as "Checked"in BW).
+    - Note: If selected, ensure the input file also contains the columns "Query Id" and "Resource Id".
+
+5. (Optional) Select a customization option:
     - Default: Use the default system and user prompts.
-    - Company: Specify a company name to analyze sentiment toward that company.
-    - Custom: Provide custom system and user prompts
+    - Company: Specify a company name to analyze sentiment "towards" that company.
+    - Custom: Provide custom system and user* prompts
 
-5. (Optional) Select a model (GPT 3.5 or 4).
+6. (Optional) Select a model:
+    - GPT-3.5 (Default): Best for large sample sizes with less complex text (e.g., tweets).
+    - GPT-4: More expensive. Best for smaller sample sizes and/or longer text samples.
+    
+7. Click "Run Sentiment Analysis".
+    - When the script finishes (may take a few min), a success message will be displayed.
 
-6. Click "Run Sentiment Analysis".
-
-7. When the script finishes (may take a few min), a success message will be displayed, and the output file will be saved to the specified location.
-
-* Click reset to restore the default prompt.
-** Change to match your system prompt. E.g., if your system prompt refers to the "Tweet" instead of "Text", change the user prompt to "Tweet:".
+* Ensure user prompt matches system prompt. E.g., if custom system prompt refers to the "Tweet" instead of "Text", change the user prompt to "Tweet:".
 """
 
 instructions_label = tk.Label(
