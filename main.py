@@ -1,170 +1,48 @@
-import asyncio
 import ctypes
 import os
 import sys
-import threading
 import tkinter as tk
-from tkinter import filedialog, messagebox, scrolledtext, ttk
+from tkinter import filedialog, scrolledtext, ttk
 import tkinter.font as tkFont
 import webbrowser
 
 import sv_ttk
 import pandas as pd
-
-from async_core_logic import process_tweets_in_batches
-from bw_api_handling import update_bw_sentiment
 import darkdetect
 
-
-"""GUI <-> CORE LOGIC CONNECTOR FUNCTIONS"""
-
-
-# Set the token and requests limits based on model selection
-def select_model(gpt_model_var):
-    model_limits = {
-        "gpt-3.5-turbo": {"token_limit": 160000, "requests_limit": 5000},
-        "gpt-4-turbo": {"token_limit": 600000, "requests_limit": 5000},
-    }
-    model = (
-        "gpt-3.5-turbo" if gpt_model_var.get() == "GPT-3.5 (Default)" else "gpt-4-turbo"
-    )
-    return (
-        model,
-        model_limits[model]["token_limit"],
-        model_limits[model]["requests_limit"],
-    )
+from src.connector_functions import setup_sentiment_analysis
 
 
-# Set the system and user prompts based on the customization option selected
-def set_prompts(
-    customization_option, company_entry, system_prompt_entry, user_prompt_entry
-):
-    if customization_option == "Default":
-        system_prompt = "Classify the sentiment of the following Text in one word from this list [Positive, Neutral, Negative]."
-        user_prompt = "Text:"
-    elif customization_option == "Company":
-        company = company_entry.get()
-        system_prompt = f"Classify the sentiment of the following Text toward {company} in one word from this list [Positive, Neutral, Negative]."
-        user_prompt = "Text:"
-    elif customization_option == "Custom":
-        system_prompt = system_prompt_entry.get("1.0", tk.END).strip()
-        user_prompt = user_prompt_entry.get()
-    return system_prompt, user_prompt
 
-
-# Main function to run sentiment analysis
-# (called when the "Run Sentiment Analysis" button is clicked)
-def run_sentiment_analysis():
-    global progress_bar
-    input_file = input_entry.get()
-    output_file = output_entry.get()
-    customization_option = customization_var.get()
-    if not input_file or not output_file:
-        messagebox.showerror(
-            "Error", "Please provide both input and output file paths."
-        )
-        return
-    model, batch_token_limit, batch_requests_limit = select_model(gpt_model_var)
-    system_prompt, user_prompt = set_prompts(
-        customization_option, company_entry, system_prompt_entry, user_prompt_entry
-    )
-    progress_bar = setup_progress_bar(placeholder_frame, progress_var)
+# Calls connnector functions to start sentiment analysis (triggered on button click)
+def start_sentiment_analysis():
+    setup_progress_bar(placeholder_frame, progress_var)
     progress_var.set(0)
-    run_button.config(state=tk.DISABLED)
-    try:
-        thread = threading.Thread(
-            target=run_sentiment_analysis_thread,
-            args=(
-                input_file,
-                output_file,
-                update_progress_gui,
-                system_prompt,
-                user_prompt,
-                model,
-                batch_token_limit,
-                batch_requests_limit,
-            ),
-        )
-        thread.start()
-    except Exception as e:
-        messagebox.showerror("Error", f"An error occurred: {str(e)}")
-        run_button.config(state=tk.NORMAL)
-
-
-# Handle file reading and writing and call the core logic in a separate thread
-def run_sentiment_analysis_thread(
-    input_file,
-    output_file,
-    update_progress_gui,
-    system_prompt,
-    user_prompt,
-    model,
-    batch_token_limit,
-    batch_requests_limit,
-):
-    log_message(
-        f"Reading file: '{os.path.basename(input_file)}'."
+    setup_sentiment_analysis(
+        input_file=input_entry.get(),
+        output_file=output_entry.get(),
+        update_progress_gui=update_progress_gui,
+        log_message=log_message,
+        enable_button=enable_button,
+        disable_button=disable_button,
+        customization_option=customization_var.get(),
+        company_entry=company_entry.get(),
+        system_prompt_entry=system_prompt_entry.get("1.0", tk.END),
+        user_prompt_entry=user_prompt_entry.get(),
+        gpt_model=gpt_model_var.get(),
+        bw_checkbox_var=bw_checkbox_var.get(),
     )
-
-    df = pd.read_excel(input_file)
-    if "Full Text" not in df.columns:
-        df = pd.read_excel(input_file, skiprows=9)
-
-    if "Full Text" not in df.columns:
-        messagebox.showerror(
-            "Error",
-            "The input file does not contain the required column 'Full Text'.",
-        )
-        window.after(0, lambda: run_button.config(state=tk.NORMAL))
-        return
-    
-    log_message("'Full Text' column found.")
-
-    if bw_checkbox_var.get():
-        if "Query Id" not in df.columns or "Resource Id" not in df.columns:
-            messagebox.showerror(
-                "Error",
-                "The input file does not contain the required BW columns 'Query Id' or 'Resource Id'.",
-            )
-            window.after(0, lambda: run_button.config(state=tk.NORMAL))
-            return
-        
-    if "Sentiment" not in df.columns:
-        df["Sentiment"] = ""
-    log_message(f"Starting sentiment analysis with {model}...")
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    df = loop.run_until_complete(
-        process_tweets_in_batches(
-            df,
-            update_progress_gui,
-            log_message,
-            system_prompt,
-            user_prompt,
-            model,
-            batch_token_limit,
-            batch_requests_limit,
-        )
-    )
-    loop.close()
-
-    if bw_checkbox_var.get():
-        log_message(f"Updating sentiment values in Brandwatch...")
-        update_bw_sentiment(df, log_message)
-
-    # Remove the token count column and save the df to the output file
-    log_message(f"Saving results to excel...")
-    df.drop(columns=["Token Count"], inplace=True)
-    update_progress_gui(98)
-    df.to_excel(output_file, index=False)
-    update_progress_gui(100)
-    log_message(f"Sentiment analysis results saved to {output_file}.")
-    messagebox.showinfo("Success", "Sentiment analysis completed successfully.")
-    window.after(0, lambda: run_button.config(state=tk.NORMAL))
-    return df
 
 
 """GUI EVENT HANDLING FUNCTIONS"""
+
+
+def enable_button():
+    window.after(0, run_button.config, {"state": tk.NORMAL})
+
+
+def disable_button():
+    window.after(0, run_button.config, {"state": tk.DISABLED})
 
 
 # Set up the progress bar widget that gets updated by the core logic
@@ -268,14 +146,18 @@ def on_customization_selected(event):
 # DPI scaling
 def set_dpi_awareness():
     try:
-        ctypes.windll.shcore.SetProcessDpiAwareness(1)
-    except AttributeError:
-        pass
-    except Exception as e:
-        print(f"Error setting DPI Awareness: {e}")
+        ctypes.windll.user32.SetProcessDPIAware()
+    except Exception:
+        try:
+            ctypes.windll.shcore.SetProcessDpiAwareness(1)
+        except AttributeError:
+            pass
+        except Exception as e:
+            print(f"Error setting DPI Awareness: {e}")
 
 
 """GUI SETUP"""
+
 
 set_dpi_awareness()
 
@@ -293,7 +175,7 @@ main_frame = tk.Frame(window)
 main_frame.pack(side=tk.RIGHT, padx=10, pady=10, expand=True, fill=tk.BOTH)
 
 instructions_frame = tk.Frame(window)
-instructions_frame.pack(side=tk.LEFT, padx=10, pady=10, fill=tk.BOTH)
+instructions_frame.pack(side=tk.LEFT, padx=10, pady=10, expand=True, fill=tk.BOTH)
 
 # Input file packing
 input_label = tk.Label(main_frame, text="Input File:", font=("Segoe UI", 12))
@@ -335,7 +217,7 @@ bw_checkbox_label.pack()
 
 # Customization option packing
 customization_label = tk.Label(
-    main_frame, text="Customization Option:", font=("Segoe UI", 12)
+    main_frame, text="Prompt Customization Option:", font=("Segoe UI", 12)
 )
 customization_label.pack(pady=(20, 0))
 customization_var = tk.StringVar()
@@ -420,7 +302,7 @@ run_button = tk.Button(
     main_frame,
     text="Run Sentiment Analysis",
     font=("Segoe UI", 12),
-    command=run_sentiment_analysis,
+    command=start_sentiment_analysis,
 )
 run_button.pack()
 
@@ -438,29 +320,27 @@ log_text_area.configure(state="disabled")
 log_text_area.pack(pady=(2, 5))
 
 instructions_text = """1. Ensure your input file is a .xlsx and contains a column named "Full Text".
-    - Note: There can be other columns in the file, and column headers can be in row 10 (BW export format).
+    - Note: Works with BW exports with column headers in row 10
 
 2. Click on the "Browse" button under "Input File" and select the file containing the mentions/tweets.
-    - Note: If the file is saved to a cloud drive (OneDrive), close it before running the tool.
+    - Note: If the file is saved to OneDrive, close it before running the tool.
 
 3. Click on the "Browse" button under "Output File" and choose a location and identifiable filename for the output file.
 
 4. (Optional): Update sentiment values in Brandwatch (will also mark updated mentions as "Checked"in BW).
-    - Note: If selected, ensure the input file also contains the columns "Query Id" and "Resource Id".
+    - Note: Ensure input file contains the columns "Query Id" and "Resource Id".
 
 5. (Optional) Select a customization option:
     - Default: Use the default system and user prompts.
-    - Company: Specify a company name to analyze sentiment "towards" that company.
-    - Custom: Provide custom system and user* prompts
+    - Company: Specify a company name to analyze sentiment "towards".
+    - Custom: Provide custom system and user prompts
 
 6. (Optional) Select a model:
-    - GPT-3.5 (Default): Best for large sample sizes with less complex text (e.g., tweets).
-    - GPT-4: More expensive. Best for smaller sample sizes and/or longer text samples.
+    - GPT-3.5: Best for large batches with less complex text samples.
+    - GPT-4: Best for smaller sample sizes and/or longer text samples.
     
-7. Click "Run Sentiment Analysis".
-    - When the script finishes (may take a few min), a success message will be displayed.
-
-* Ensure user prompt matches system prompt. E.g., if custom system prompt refers to the "Tweet" instead of "Text", change the user prompt to "Tweet:".
+7. Click "Run Sentiment Analysis. 
+    - A success message will be displayed when finished.
 """
 
 instructions_label = tk.Label(
@@ -468,7 +348,7 @@ instructions_label = tk.Label(
 )
 instructions_label.pack(fill="x")
 instructions_text_area = scrolledtext.ScrolledText(
-    instructions_frame, wrap=tk.WORD, width=60, height=30, font=("Segoe UI", 11)
+    instructions_frame, wrap=tk.WORD, width=60, height=34, font=("Segoe UI", 11)
 )
 instructions_text_area.insert(tk.END, instructions_text)
 instructions_text_area.configure(state="disabled")
@@ -480,7 +360,7 @@ class Linkbutton(ttk.Button):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.font = tkFont.Font(family="Segoe UI", size=11)
+        self.font = tkFont.Font(family="Segoe UI", size=12)
         style = ttk.Style()
         style.configure("Link.TLabel", foreground="#357fde", font=self.font)
         self.configure(style="Link.TLabel", cursor="hand2")
