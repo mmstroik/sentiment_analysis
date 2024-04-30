@@ -6,8 +6,6 @@ The Sentiment Analysis Tool is a GUI-based Python application that uses the Open
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [Table of Contents](#table-of-contents)
 - [Basic Usage](#basic-usage)
   - [Setup](#setup)
   - [In the Sentiment Analysis Tool window](#in-the-sentiment-analysis-tool-window)
