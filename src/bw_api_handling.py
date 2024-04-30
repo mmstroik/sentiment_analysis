@@ -39,8 +39,10 @@ def prepare_data_for_bw(df):
     df_bw["Sentiment"] = df_bw[
         "Sentiment"
     ].str.lower()  # Convert sentiment values to lowercase for api
-    if 'Date' in df_bw.columns:
-        df_bw["Date"] = pd.to_datetime(df_bw["Date"]).dt.strftime('%Y-%m-%dT%H:%M:%S.%f') + '+0000'
+    if "Date" in df_bw.columns:
+        df_bw["Date"] = (
+            pd.to_datetime(df_bw["Date"]).dt.strftime("%Y-%m-%dT%H:%M:%S.%f") + "+0000"
+        )
 
     # set 'checked' to true for updated mentions
     if "Checked" not in df_bw.columns:
@@ -52,8 +54,9 @@ def prepare_data_for_bw(df):
 
     return sentiment_dicts
 
+
 def create_dict_list(df_bw):
-    if 'Date' in df_bw.columns:
+    if "Date" in df_bw.columns:
         sentiment_dicts = (
             df_bw[["Query Id", "Resource Id", "Sentiment", "Date", "Checked"]]
             .rename(
@@ -62,7 +65,7 @@ def create_dict_list(df_bw):
                     "Resource Id": "resourceId",
                     "Sentiment": "sentiment",
                     "Date": "date",
-                    "Checked": "checked"
+                    "Checked": "checked",
                 }
             )
             .to_dict("records")
@@ -75,12 +78,12 @@ def create_dict_list(df_bw):
                     "Query Id": "queryId",
                     "Resource Id": "resourceId",
                     "Sentiment": "sentiment",
-                    "Checked": "checked"
+                    "Checked": "checked",
                 }
             )
             .to_dict("records")
         )
-        
+
     return sentiment_dicts
 
 
