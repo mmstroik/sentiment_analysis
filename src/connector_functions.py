@@ -110,9 +110,18 @@ def run_sentiment_analysis_thread(
 
     df = pd.read_excel(input_file)
     if "Full Text" not in df.columns:
+        df = pd.read_excel(input_file, skiprows=8)
+    if "Full Text" not in df.columns:
         df = pd.read_excel(input_file, skiprows=9)
+    if "Full Text" not in df.columns:
+        df = pd.read_excel(input_file, skiprows=10)
+    if "Full Text" not in df.columns:
+        df = pd.read_excel(input_file, skiprows=11)
+    if "Full Text" not in df.columns:
+        df = pd.read_excel(input_file, skiprows=12)
 
     if "Full Text" not in df.columns:
+        log_message("Error: The input file does not contain the required column 'Full Text'.")
         messagebox.showerror(
             "Error",
             "The input file does not contain the required column 'Full Text'.",
