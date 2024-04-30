@@ -151,7 +151,7 @@ def run_sentiment_analysis_thread(
     )
     loop.close()
 
-    if bw_checkbox_var.get():
+    if bw_checkbox_var:
         log_message(f"Updating sentiment values in Brandwatch...")
         update_bw_sentiment(df, log_message)
 
