@@ -4,3 +4,5 @@ Sentiment-Analysis.spec
 read_protected_excel.py
 dist/Sentiment-Analysis-Tool/
 build/Sentiment-Analysis-Tool/
+README.html
+dist/Sentiment-Analysis.exe

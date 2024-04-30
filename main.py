@@ -146,14 +146,18 @@ def on_customization_selected(event):
 # DPI scaling
 def set_dpi_awareness():
     try:
-        ctypes.windll.shcore.SetProcessDpiAwareness(1)
-    except AttributeError:
-        pass
-    except Exception as e:
-        print(f"Error setting DPI Awareness: {e}")
+        ctypes.windll.user32.SetProcessDPIAware()
+    except Exception:
+        try:
+            ctypes.windll.shcore.SetProcessDpiAwareness(1)
+        except AttributeError:
+            pass
+        except Exception as e:
+            print(f"Error setting DPI Awareness: {e}")
 
 
 """GUI SETUP"""
+
 
 set_dpi_awareness()
 
@@ -171,7 +175,7 @@ main_frame = tk.Frame(window)
 main_frame.pack(side=tk.RIGHT, padx=10, pady=10, expand=True, fill=tk.BOTH)
 
 instructions_frame = tk.Frame(window)
-instructions_frame.pack(side=tk.LEFT, padx=10, pady=10, fill=tk.BOTH)
+instructions_frame.pack(side=tk.LEFT, padx=10, pady=10, expand=True, fill=tk.BOTH)
 
 # Input file packing
 input_label = tk.Label(main_frame, text="Input File:", font=("Segoe UI", 12))
@@ -213,7 +217,7 @@ bw_checkbox_label.pack()
 
 # Customization option packing
 customization_label = tk.Label(
-    main_frame, text="Customization Option:", font=("Segoe UI", 12)
+    main_frame, text="Prompt Customization Option:", font=("Segoe UI", 12)
 )
 customization_label.pack(pady=(20, 0))
 customization_var = tk.StringVar()
@@ -319,7 +323,7 @@ instructions_text = """1. Ensure your input file is a .xlsx and contains a colum
     - Note: Works with BW exports with column headers in row 10
 
 2. Click on the "Browse" button under "Input File" and select the file containing the mentions/tweets.
-    - Note: If the file is saved to a OneDrive, close it before running the tool.
+    - Note: If the file is saved to OneDrive, close it before running the tool.
 
 3. Click on the "Browse" button under "Output File" and choose a location and identifiable filename for the output file.
 
@@ -329,7 +333,7 @@ instructions_text = """1. Ensure your input file is a .xlsx and contains a colum
 5. (Optional) Select a customization option:
     - Default: Use the default system and user prompts.
     - Company: Specify a company name to analyze sentiment "towards".
-    - Custom: Provide custom system and user* prompts
+    - Custom: Provide custom system and user prompts
 
 6. (Optional) Select a model:
     - GPT-3.5: Best for large batches with less complex text samples.
@@ -337,8 +341,6 @@ instructions_text = """1. Ensure your input file is a .xlsx and contains a colum
     
 7. Click "Run Sentiment Analysis. 
     - A success message will be displayed when finished.
-
-* Ensure user prompt matches system prompt. E.g., if custom system prompt refers to the "Tweet" instead of "Text", change the user prompt to "Tweet:".
 """
 
 instructions_label = tk.Label(
@@ -346,7 +348,7 @@ instructions_label = tk.Label(
 )
 instructions_label.pack(fill="x")
 instructions_text_area = scrolledtext.ScrolledText(
-    instructions_frame, wrap=tk.WORD, width=60, height=32, font=("Segoe UI", 11)
+    instructions_frame, wrap=tk.WORD, width=60, height=34, font=("Segoe UI", 11)
 )
 instructions_text_area.insert(tk.END, instructions_text)
 instructions_text_area.configure(state="disabled")
@@ -358,7 +360,7 @@ class Linkbutton(ttk.Button):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.font = tkFont.Font(family="Segoe UI", size=11)
+        self.font = tkFont.Font(family="Segoe UI", size=12)
         style = ttk.Style()
         style.configure("Link.TLabel", foreground="#357fde", font=self.font)
         self.configure(style="Link.TLabel", cursor="hand2")
