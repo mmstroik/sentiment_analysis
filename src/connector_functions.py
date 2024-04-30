@@ -122,7 +122,7 @@ def run_sentiment_analysis_thread(
 
     log_message("'Full Text' column found.")
 
-    if bw_checkbox_var.get():
+    if bw_checkbox_var:
         if "Query Id" not in df.columns or "Resource Id" not in df.columns:
             messagebox.showerror(
                 "Error",
