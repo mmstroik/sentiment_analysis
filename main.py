@@ -13,7 +13,6 @@ import darkdetect
 from src.connector_functions import setup_sentiment_analysis
 
 
-
 # Calls connnector functions to start sentiment analysis (triggered on button click)
 def start_sentiment_analysis():
     setup_progress_bar(placeholder_frame, progress_var)
