@@ -9,11 +9,13 @@ import webbrowser
 import sv_ttk
 import pandas as pd
 import darkdetect
+from functools import partial
 
 from src.connector_functions import setup_sentiment_analysis
+from src.tkmd import SimpleMarkdownText, HyperlinkManager
 
 
-# Calls connnector functions to start sentiment analysis (triggered on button click)
+# Calls connnector functions (triggered on button click)
 def start_sentiment_analysis():
     setup_progress_bar(placeholder_frame, progress_var)
     progress_var.set(0)
@@ -179,7 +181,7 @@ instructions_frame.pack(side=tk.LEFT, padx=10, pady=10, expand=True, fill=tk.BOT
 # Input file packing
 input_label = tk.Label(main_frame, text="Input File:", font=("Segoe UI", 12))
 input_label.pack()
-input_entry = tk.Entry(main_frame, width=50, font=("Segoe UI", 11))
+input_entry = tk.Entry(main_frame, width=55, font=("Segoe UI", 11))
 input_entry.pack()
 input_button = tk.Button(
     main_frame, text="Browse", font=("Segoe UI", 12), command=browse_input_file
@@ -189,7 +191,7 @@ input_button.pack()
 # Output file packing
 output_label = tk.Label(main_frame, text="Output File:", font=("Segoe UI", 12))
 output_label.pack(pady=(20, 0))
-output_entry = tk.Entry(main_frame, width=50, font=("Segoe UI", 11))
+output_entry = tk.Entry(main_frame, width=55, font=("Segoe UI", 11))
 output_entry.pack()
 output_button = tk.Button(
     main_frame, text="Browse", font=("Segoe UI", 12), command=browse_output_file
@@ -313,83 +315,59 @@ placeholder_frame.pack_propagate(False)
 log_label = tk.Label(main_frame, text="Log Messages:", font=("Segoe UI", 12))
 log_label.pack(pady=(0, 0))
 log_text_area = scrolledtext.ScrolledText(
-    main_frame, wrap=tk.WORD, width=55, height=8, font=("Segoe UI", 11)
+    main_frame, wrap=tk.WORD, width=55, height=9, font=("Segoe UI", 11)
 )
 log_text_area.configure(state="disabled")
 log_text_area.pack(pady=(2, 5))
 
 instructions_text = """1. Ensure your input file is a .xlsx and contains a column named "Full Text".
-    - Note: Works with BW exports with column headers in row 10
+* Note: Works with BW exports with column headers in row 10
 
 2. Click on the "Browse" button under "Input File" and select the file containing the mentions/tweets.
-    - Note: If the file is saved to OneDrive, close it before running the tool.
+* Note: If the file is saved to OneDrive, close it before running the tool.
 
 3. Click on the "Browse" button under "Output File" and choose a location and identifiable filename for the output file.
 
 4. (Optional): Update sentiment values in Brandwatch (will also mark updated mentions as "Checked"in BW).
-    - Note: Ensure input file contains the columns "Query Id" and "Resource Id".
+* Note: Ensure input file contains the columns "Query Id" and "Resource Id".
 
 5. (Optional) Select a customization option:
-    - Default: Use the default system and user prompts.
-    - Company: Specify a company name to analyze sentiment "towards".
-    - Custom: Provide custom system and user prompts
+* Default: Use the default system and user prompts.
+* Company: Specify a company name to analyze sentiment "towards".
+* Custom: Provide custom system and user prompts
 
 6. (Optional) Select a model:
-    - GPT-3.5: Best for large batches with less complex text samples.
-    - GPT-4: Best for smaller sample sizes and/or longer text samples.
+* GPT-3.5: Best for large batches with less complex text samples.
+* GPT-4: Best for smaller sample sizes and/or longer text samples.
     
 7. Click "Run Sentiment Analysis. 
-    - A success message will be displayed when finished.
+* A success message will be displayed when finished.
 """
 
+default_font = tkFont.nametofont("TkDefaultFont")
+default_font.configure(family="Segoe UI", size=12)
 instructions_label = tk.Label(
     instructions_frame, text="Instructions:", font=("Segoe UI", 12)
 )
 instructions_label.pack(fill="x")
-instructions_text_area = scrolledtext.ScrolledText(
-    instructions_frame, wrap=tk.WORD, width=60, height=34, font=("Segoe UI", 11)
-)
-instructions_text_area.insert(tk.END, instructions_text)
-instructions_text_area.configure(state="disabled")
-instructions_text_area.pack()
-
-
-class Linkbutton(ttk.Button):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.font = tkFont.Font(family="Segoe UI", size=12)
-        style = ttk.Style()
-        style.configure("Link.TLabel", foreground="#357fde", font=self.font)
-        self.configure(style="Link.TLabel", cursor="hand2")
-        self.bind("<Enter>", self.on_mouse_enter)
-        self.bind("<Leave>", self.on_mouse_leave)
-
-    def on_mouse_enter(self, event):
-        self.font.configure(underline=True)
-
-    def on_mouse_leave(self, event):
-        self.font.configure(underline=False)
-
-
-docs_link = Linkbutton(
+instructions_text_area = SimpleMarkdownText(
     instructions_frame,
-    text="Full Documentation/Instructions",
-    command=lambda: webbrowser.open(
-        "https://docs.google.com/document/d/1R5qPnn5xbGOv3aZk6Cf5egfvrMVJ6TI2v_xg6FiFqp8/edit"
-    ),
+    wrap=tk.WORD,
+    width=50,
+    height=36,
+    font=default_font,
 )
-docs_link.pack(pady=(5, 2))
+instructions_text_area.pack()
+instructions_text_area.insert_markdown(instructions_text)
+
+hyperlink = HyperlinkManager(instructions_text_area)
+instructions_text_area.insert('end', "Full Documentation/Instructions", hyperlink.add(partial(webbrowser.open, "https://docs.google.com/document/d/1R5qPnn5xbGOv3aZk6Cf5egfvrMVJ6TI2v_xg6FiFqp8/edit")))
+instructions_text_area.configure(state="disabled")
 
 if darkdetect.isDark():
     sv_ttk.set_theme("dark")
-    style = ttk.Style()
-    style.map("Link.TLabel", foreground=[("active", "#357fde"), ("!active", "#357fde")])
 else:
     sv_ttk.set_theme("light")
-    style = ttk.Style()
-    style.map("Link.TLabel", foreground=[("active", "#357fde"), ("!active", "#357fde")])
 
 # Start the GUI event loop
 window.mainloop()
