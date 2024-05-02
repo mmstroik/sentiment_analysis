@@ -7,6 +7,9 @@ import pandas as pd
 API_TOKEN = "***REMOVED***"
 URL = "https://api.brandwatch.com/projects/***REMOVED***/data/mentions"
 
+TRANSIENT_ERROR_CODES = [502, 503, 504, 408]
+MAX_RETRIES = 5
+
 
 def update_bw_sentiment(df, log_callback):
     cleaned_sentiment_dicts = prepare_data_for_bw(df)
@@ -16,6 +19,7 @@ def update_bw_sentiment(df, log_callback):
     ]
     total_sent = 0
     i = 0
+    retries = 0
     while i < len(chunks):
         chunk = chunks[i]
         data = json.dumps(chunk)
@@ -24,6 +28,14 @@ def update_bw_sentiment(df, log_callback):
         if result == "RATE_LIMIT_EXCEEDED":
             log_callback("Rate limit exceeded, pausing for 10 minutes...")
             time.sleep(600)
+            continue
+        elif result == "TRANSIENT_ERROR":
+            retries += 1
+            if retries > MAX_RETRIES:
+                log_callback("Maximum number of retries reached. Exiting...")
+                break
+            log_callback("Transient error occurred, pausing for 1 minute before retrying...")
+            time.sleep(60)
             continue
         elif not result:
             break
@@ -98,6 +110,8 @@ def bw_request(data, log_callback):
     response = requests.patch(URL, data=data, headers=headers)
     if response.status_code == 429:
         return "RATE_LIMIT_EXCEEDED"
+    elif response.status_code in TRANSIENT_ERROR_CODES:
+        return "TRANSIENT_ERROR"
     try:
         response_json = response.json()
     except ValueError:
@@ -111,8 +125,5 @@ def bw_request(data, log_callback):
             f"ERROR: Error updating sentiment values in Brandwatch: \n{response_json['errors']}"
         )
         return False
-
-    if response.status_code == 429:
-        return "RATE_LIMIT_EXCEEDED"
 
     return True
