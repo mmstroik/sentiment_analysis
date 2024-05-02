@@ -6,7 +6,4 @@ build/
 dist/
 Sentiment-Analysis-Tool.spec
 README.html
-src/__pycache__/__init__.cpython-312.pyc
-src/__pycache__/async_core_logic.cpython-312.pyc
-src/__pycache__/bw_api_handling.cpython-312.pyc
-src/__pycache__/connector_functions.cpython-312.pyc
+src/__pycache__/
