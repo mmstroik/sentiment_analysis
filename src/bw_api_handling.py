@@ -3,12 +3,12 @@ import json
 import time
 import pandas as pd
 
-
 API_TOKEN = "***REMOVED***"
 URL = "https://api.brandwatch.com/projects/***REMOVED***/data/mentions"
 
 TRANSIENT_ERROR_CODES = [502, 503, 504, 408]
 MAX_RETRIES = 5
+MAX_RATE_LIMIT_WAIT_TIME = 600  # 10 minutes in seconds
 
 
 def update_bw_sentiment(df, log_callback):
@@ -20,6 +20,7 @@ def update_bw_sentiment(df, log_callback):
     total_sent = 0
     i = 0
     retries = 0
+    rate_limit_wait_time = 60  # Start with 1 minute wait time
     while i < len(chunks):
         chunk = chunks[i]
         data = json.dumps(chunk)
@@ -27,9 +28,11 @@ def update_bw_sentiment(df, log_callback):
         result = bw_request(data, log_callback)
         
         if result == "RATE_LIMIT_EXCEEDED":
-            log_callback("Rate limit exceeded, pausing for 10 minutes...")
-            time.sleep(600)
-            continue
+            log_callback(f"Rate limit exceeded, pausing for {rate_limit_wait_time/60} minutes...")
+            time.sleep(rate_limit_wait_time)
+            rate_limit_wait_time = min(rate_limit_wait_time * 2, MAX_RATE_LIMIT_WAIT_TIME)  # Double the wait time for the next retry, up to a maximum of 10 minutes
+            continue # retry the same chunk
+        
         elif result == "TRANSIENT_ERROR":
             retries += 1
             if retries > MAX_RETRIES:
@@ -37,7 +40,8 @@ def update_bw_sentiment(df, log_callback):
                 break
             log_callback("Transient error occurred, pausing for 1 minute before retrying...")
             time.sleep(60)
-            continue
+            continue # retry the same chunk
+        
         elif not result:
             break
 

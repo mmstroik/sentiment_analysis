@@ -328,7 +328,7 @@ instructions_text = """1. Ensure your input file is a .xlsx and contains a colum
 
 3. Click on the "Browse" button under "Output File" and choose a location and identifiable filename for the output file.
 
-4. (Optional): Update sentiment values in Brandwatch (will also mark updated mentions as "Checked"in BW).
+4. (Optional): Update sentiment values in Brandwatch (will also mark updated mentions as "Checked" in BW).
 * Note: Ensure input file contains the columns "Query Id" and "Resource Id".
 
 5. (Optional) Select a customization option:

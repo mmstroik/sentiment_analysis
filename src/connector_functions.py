@@ -106,15 +106,14 @@ def run_sentiment_analysis_thread(
     batch_requests_limit,
     bw_checkbox_var,
 ):
-    log_message(f"Reading file: '{os.path.basename(input_file)}'.")
-
-    df = pd.read_excel(input_file)
-    for i in range(7, 13):
-        if "Full Text" in df.columns:
-            break
-        df = pd.read_excel(input_file, skiprows=i)
-
-    if "Full Text" not in df.columns:
+    log_message(f"Reading file: '{os.path.basename(input_file)}'...")
+    
+    df = pd.read_excel(input_file, header=None)
+    
+    # Find the row containing the 'Full Text' column
+    full_text_row = df[df.apply(lambda row: row.astype(str).str.contains('Full Text').any(), axis=1)].index[0]
+    
+    if full_text_row is None:
         log_message("Error: The input file does not contain the required column 'Full Text'.")
         messagebox.showerror(
             "Error",
@@ -123,6 +122,10 @@ def run_sentiment_analysis_thread(
         enable_button()
         return
 
+    # Drop the rows above the 'Full Text' row and set the 'Full Text' row as the header
+    df.columns = df.iloc[full_text_row]
+    df = df.iloc[(full_text_row + 1):].reset_index(drop=True)
+    
     log_message("'Full Text' column found.")
 
     if bw_checkbox_var:
