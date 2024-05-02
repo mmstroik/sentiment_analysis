@@ -25,6 +25,7 @@ def update_bw_sentiment(df, log_callback):
         data = json.dumps(chunk)
         log_callback(f"Sending batch {i+1} of {len(chunks)} to Brandwatch...")
         result = bw_request(data, log_callback)
+        
         if result == "RATE_LIMIT_EXCEEDED":
             log_callback("Rate limit exceeded, pausing for 10 minutes...")
             time.sleep(600)
@@ -39,6 +40,7 @@ def update_bw_sentiment(df, log_callback):
             continue
         elif not result:
             break
+
         total_sent += len(chunk)
         log_callback(
             f"Progress: Updated {total_sent} of {len(cleaned_sentiment_dicts)} mentions in Brandwatch."
