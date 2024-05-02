@@ -1,9 +1,8 @@
 mmstr.sentiment-workspace.code-workspace
-pie_icon.ico
 Sentiment-Analysis.spec
+Sentiment-Analysis-Tool.spec
 read_protected_excel.py
 build/
 dist/
-Sentiment-Analysis-Tool.spec
 README.html
 src/__pycache__/
