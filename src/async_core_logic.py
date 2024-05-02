@@ -104,7 +104,7 @@ async def main_batch_processing_loop(
         start_idx = batch_end_idx
 
         if start_idx < len(df):
-            log_callback("Waiting for rate limit timer...")
+            log_callback("Waiting 60 secs for rate limit timer...")
             await timer
 
 
@@ -124,7 +124,7 @@ async def reprocess_errors(
         log_callback(
             f"Waiting for rate limit timer before reprocessing {len(errored_df)} errored mentions..."
         )
-        await asyncio.sleep(60)  # Wait for 60 seconds before starting the reprocessing
+        await asyncio.sleep(60)  # Wait for 60 seconds before starting
 
         total_errors = len(errored_df)
         processed_errors = 0
@@ -154,7 +154,7 @@ async def reprocess_errors(
                     df.at[tweet_idx, "Sentiment"] = result
 
             processed_errors += len(results)
-            progress = (processed_errors / total_errors) * 95
+            progress = (processed_errors / total_errors) * 90
             update_progress_callback(
                 progress + 5
             )  # Adjust progress callback for error processing
