@@ -6,3 +6,4 @@ build/
 dist/
 README.html
 src/__pycache__/
+Sentiment-Analysis-Tool.spec
