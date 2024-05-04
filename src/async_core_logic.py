@@ -1,4 +1,5 @@
 import asyncio
+import time
 
 import pandas as pd
 from aiohttp import ClientSession
@@ -30,7 +31,7 @@ async def process_tweets_in_batches(
         start_idx = 0
         update_progress_callback(5)
 
-        await main_batch_processing_loop(
+        start_time = await main_batch_processing_loop(
             df,
             update_progress_callback,
             log_callback,
@@ -45,7 +46,7 @@ async def process_tweets_in_batches(
             start_idx,
         )
         # Reprocess errored tweets
-        await reprocess_errors(
+        start_time = await reprocess_errors(
             df,
             update_progress_callback,
             log_callback,
@@ -56,7 +57,7 @@ async def process_tweets_in_batches(
             batch_requests_limit,
             session,
         )
-    return df
+    return df, start_time
 
 
 async def main_batch_processing_loop(
@@ -87,6 +88,7 @@ async def main_batch_processing_loop(
             call_openai_async(session, tweet, system_prompt, user_prompt, model)
             for tweet in batch["Full Text"]
         ]
+        start_time = time.time()
         timer = asyncio.create_task(asyncio.sleep(60))
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -106,6 +108,8 @@ async def main_batch_processing_loop(
         if start_idx < len(df):
             log_callback("Waiting 60 secs for rate limit timer...")
             await timer
+    
+    return start_time
 
 
 async def reprocess_errors(
@@ -141,6 +145,7 @@ async def reprocess_errors(
                 call_openai_async(session, tweet, system_prompt, user_prompt, model)
                 for tweet in batch["Full Text"]
             ]
+            start_time = time.time()
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
             # Handle results for errored tweets
@@ -162,6 +167,8 @@ async def reprocess_errors(
                 f"Reprocessed {processed_errors} of {total_errors} errored mentions."
             )
             start_idx = batch_end_idx
+        
+        return start_time
 
 
 # Asynchronously calls the API for each tweet in the batch

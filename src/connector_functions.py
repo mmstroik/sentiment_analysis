@@ -148,7 +148,7 @@ def run_sentiment_analysis_thread(
     log_message(f"Starting sentiment analysis with {model}...")
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    df = loop.run_until_complete(
+    df, start_time = loop.run_until_complete(
         process_tweets_in_batches(
             df,
             update_progress_gui,
@@ -161,8 +161,6 @@ def run_sentiment_analysis_thread(
         )
     )
     loop.close()
-    
-    start_time = time.time()
     
     if bw_checkbox_var:
         log_message(f"-----\nUpdating sentiment values in Brandwatch...")
@@ -179,7 +177,7 @@ def run_sentiment_analysis_thread(
     elapsed_time = time.time() - start_time
     remaining_time = max(55 - elapsed_time, 0)
     if remaining_time > 0:
-        log_message(f"Waiting for {int(remaining_time)} more seconds before enabling the button due to rate limits...")
+        log_message(f"Waiting for {int(remaining_time)} more seconds before enabling the button (rate limit)...")
         time.sleep(remaining_time)
         log_message("Cooldown complete.")
 
