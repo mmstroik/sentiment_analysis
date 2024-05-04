@@ -361,7 +361,16 @@ instructions_text_area.pack()
 instructions_text_area.insert_markdown(instructions_text)
 
 hyperlink = HyperlinkManager(instructions_text_area)
-instructions_text_area.insert('end', "Full Documentation/Instructions", hyperlink.add(partial(webbrowser.open, "https://docs.google.com/document/d/1R5qPnn5xbGOv3aZk6Cf5egfvrMVJ6TI2v_xg6FiFqp8/edit")))
+instructions_text_area.insert(
+    "end",
+    "Full Documentation/Instructions",
+    hyperlink.add(
+        partial(
+            webbrowser.open,
+            "https://docs.google.com/document/d/1R5qPnn5xbGOv3aZk6Cf5egfvrMVJ6TI2v_xg6FiFqp8/edit",
+        )
+    ),
+)
 instructions_text_area.configure(state="disabled")
 
 if darkdetect.isDark():
