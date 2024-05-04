@@ -26,22 +26,28 @@ def update_bw_sentiment(df, log_callback):
         data = json.dumps(chunk)
         log_callback(f"Sending batch {i+1} of {len(chunks)} to Brandwatch...")
         result = bw_request(data, log_callback)
-        
+
         if result == "RATE_LIMIT_EXCEEDED":
-            log_callback(f"Rate limit exceeded, pausing for {rate_limit_wait_time/60} minutes...")
+            log_callback(
+                f"Rate limit exceeded, pausing for {rate_limit_wait_time/60} minutes..."
+            )
             time.sleep(rate_limit_wait_time)
-            rate_limit_wait_time = min(rate_limit_wait_time * 2, MAX_RATE_LIMIT_WAIT_TIME)  # Double the wait time for the next retry, up to a maximum of 10 minutes
-            continue # retry the same chunk
-        
+            rate_limit_wait_time = min(
+                rate_limit_wait_time * 2, MAX_RATE_LIMIT_WAIT_TIME
+            )  # Double the wait time for the next retry, up to a maximum of 10 minutes
+            continue  # retry the same chunk
+
         elif result == "TRANSIENT_ERROR":
             retries += 1
             if retries > MAX_RETRIES:
                 log_callback("Maximum number of retries reached. Exiting...")
                 break
-            log_callback("Transient error occurred, pausing for 1 minute before retrying...")
+            log_callback(
+                "Transient error occurred, pausing for 1 minute before retrying..."
+            )
             time.sleep(60)
-            continue # retry the same chunk
-        
+            continue  # retry the same chunk
+
         elif not result:
             break
 
