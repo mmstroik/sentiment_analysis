@@ -94,6 +94,14 @@ def browse_output_file():
     output_entry.delete(0, tk.END)
     output_entry.insert(0, file_path)
 
+# Used for warning message
+def check_file_exists(*args):
+    file_path = output_var.get()
+    if os.path.isfile(file_path):
+        warning_label.config(text="Warning: output file exists and will be overwritten.", fg="red")
+    else:
+        warning_label.config(text="")
+
 
 # Reset the system and user prompt entry
 def reset_system_prompt():
@@ -188,15 +196,24 @@ input_button = tk.Button(
 )
 input_button.pack()
 
+
 # Output file packing
 output_label = tk.Label(main_frame, text="Output File:", font=("Segoe UI", 12))
 output_label.pack(pady=(20, 0))
-output_entry = tk.Entry(main_frame, width=55, font=("Segoe UI", 11))
+
+output_var = tk.StringVar()
+output_var.trace("w", check_file_exists)
+
+output_entry = tk.Entry(main_frame, textvariable=output_var, width=55, font=("Segoe UI", 11))
 output_entry.pack()
+
 output_button = tk.Button(
     main_frame, text="Browse", font=("Segoe UI", 12), command=browse_output_file
 )
 output_button.pack()
+warning_label = tk.Label(main_frame, text="", font=("Segoe UI", 11), fg="red")
+warning_label.pack()
+
 
 # BW API update checkbox
 bw_checkbox_var = tk.IntVar()
@@ -208,13 +225,14 @@ bw_checkbox = ttk.Checkbutton(
     variable=bw_checkbox_var,
     style="TCheckbutton",
 )
-bw_checkbox.pack(pady=(20, 0))
+bw_checkbox.pack(pady=(0, 0))
 bw_checkbox_label = tk.Label(
     main_frame,
     text="(Requires 'Query Id' and 'Resource Id' columns in input file)",
     font=("Segoe UI", 10, "italic"),
 )
 bw_checkbox_label.pack()
+
 
 # Customization option packing
 customization_label = tk.Label(
@@ -234,6 +252,7 @@ customization_dropdown = ttk.Combobox(
 customization_dropdown.bind("<<ComboboxSelected>>", on_customization_selected)
 customization_dropdown.pack()
 
+
 # GPT Model Selection
 gpt_model_label = tk.Label(main_frame, text="GPT Model:", font=("Segoe UI", 12))
 gpt_model_label.pack(pady=(20, 0))
@@ -249,9 +268,11 @@ gpt_model_dropdown = ttk.Combobox(
 )
 gpt_model_dropdown.pack()
 
+
 # Company entry
 company_label = tk.Label(main_frame, text="Company name:", font=("Segoe UI", 12))
 company_entry = tk.Entry(main_frame, width=16, font=("Segoe UI", 11))
+
 
 # System prompt
 system_prompt_frame = tk.Frame(main_frame)
@@ -278,6 +299,7 @@ system_prompt_entry.insert(
     "[Positive, Neutral, Negative].",
 )
 
+
 # User prompt
 user_prompt_frame = tk.Frame(main_frame)
 
@@ -296,6 +318,7 @@ user_prompt_tweet_label = tk.Label(
 )
 user_prompt_tweet_label.pack(side=tk.LEFT, padx=(5, 0))
 
+
 # Run button
 run_label = tk.Label(main_frame, text="")
 run_label.pack(pady=(5, 0))
@@ -310,6 +333,7 @@ run_button.pack()
 placeholder_frame = tk.Frame(main_frame, height=20, width=400)
 placeholder_frame.pack(pady=10)
 placeholder_frame.pack_propagate(False)
+
 
 # Logging section
 log_label = tk.Label(main_frame, text="Log Messages:", font=("Segoe UI", 12))
