@@ -56,6 +56,7 @@ def setup_sentiment_analysis(
     user_prompt_entry,
     gpt_model,
     bw_checkbox_var,
+    logprob_checkbox_var,
 ):
     if not input_file or not output_file:
         messagebox.showerror(
@@ -83,6 +84,7 @@ def setup_sentiment_analysis(
                 batch_token_limit,
                 batch_requests_limit,
                 bw_checkbox_var,
+                logprob_checkbox_var,
             ),
         )
         thread.start()
@@ -104,6 +106,7 @@ def run_sentiment_analysis_thread(
     batch_token_limit,
     batch_requests_limit,
     bw_checkbox_var,
+    logprob_checkbox_var,
 ):
     log_message(f"Reading file: '{os.path.basename(input_file)}'...")
 
@@ -144,6 +147,9 @@ def run_sentiment_analysis_thread(
 
     if "Sentiment" not in df.columns:
         df["Sentiment"] = ""
+        
+    if logprob_checkbox_var:
+        probs_bool = True
 
     log_message(f"Starting sentiment analysis with {model}...")
     loop = asyncio.new_event_loop()
@@ -156,6 +162,7 @@ def run_sentiment_analysis_thread(
             system_prompt,
             user_prompt,
             model,
+            probs_bool,
             batch_token_limit,
             batch_requests_limit,
         )
@@ -169,13 +176,20 @@ def run_sentiment_analysis_thread(
     log_message(f"Saving results to excel...")
     df.drop(columns=["Token Count"], inplace=True)
     update_progress_gui(98)
+    
+    if logprob_checkbox_var:
+        cols = df.columns.tolist()
+        sentiment_index = cols.index('Sentiment')
+        cols = cols[:sentiment_index+1] + ['Probs'] + cols[sentiment_index+1:-1]
+        df = df[cols]
+    
     df.to_excel(output_file, index=False)
     update_progress_gui(100)
     log_message(f"Sentiment analysis results saved to {output_file}.")
     messagebox.showinfo("Success", "Sentiment analysis completed successfully.")
 
     elapsed_time = time.time() - start_time
-    remaining_time = max(55 - elapsed_time, 0)
+    remaining_time = max(60 - elapsed_time, 0)
     if remaining_time > 0:
         log_message(f"Waiting for {int(remaining_time)} more seconds before enabling the button (rate limit)...")
         time.sleep(remaining_time)
