@@ -32,6 +32,7 @@ def start_sentiment_analysis():
         user_prompt_entry=user_prompt_entry.get(),
         gpt_model=gpt_model_var.get(),
         bw_checkbox_var=bw_checkbox_var.get(),
+        logprob_checkbox_var=logprob_checkbox_var.get(),
     )
 
 
@@ -232,6 +233,19 @@ bw_checkbox_label = tk.Label(
     font=("Segoe UI", 10, "italic"),
 )
 bw_checkbox_label.pack()
+
+
+# logprob checkbox
+logprob_checkbox_var = tk.IntVar()
+style = ttk.Style()
+style.configure("TCheckbutton", font=("Segoe UI", 14))
+logprob_checkbox = ttk.Checkbutton(
+    main_frame,
+    text="Output probabilities for each sentiment prediction",
+    variable=logprob_checkbox_var,
+    style="TCheckbutton",
+)
+logprob_checkbox.pack(pady=(10, 0))
 
 
 # Customization option packing

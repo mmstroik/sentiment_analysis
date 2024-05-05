@@ -1,4 +1,5 @@
 import asyncio
+import math
 import time
 
 import pandas as pd
@@ -21,6 +22,7 @@ async def process_tweets_in_batches(
     system_prompt,
     user_prompt,
     model,
+    probs_bool,
     batch_token_limit,
     batch_requests_limit,
 ):
@@ -38,6 +40,7 @@ async def process_tweets_in_batches(
             system_prompt,
             user_prompt,
             model,
+            probs_bool,
             batch_token_limit,
             batch_requests_limit,
             total,
@@ -45,18 +48,23 @@ async def process_tweets_in_batches(
             session,
             start_idx,
         )
+        
         # Reprocess errored tweets
-        start_time = await reprocess_errors(
-            df,
-            update_progress_callback,
-            log_callback,
-            system_prompt,
-            user_prompt,
-            model,
-            batch_token_limit,
-            batch_requests_limit,
-            session,
-        )
+        errored_df = df[df["Sentiment"].isin(["Error", ""])]
+        if not errored_df.empty:        
+            start_time = await reprocess_errors(
+                df,
+                update_progress_callback,
+                log_callback,
+                system_prompt,
+                user_prompt,
+                model,
+                probs_bool,
+                batch_token_limit,
+                batch_requests_limit,
+                session,
+                errored_df,
+            )
     return df, start_time
 
 
@@ -67,6 +75,7 @@ async def main_batch_processing_loop(
     system_prompt,
     user_prompt,
     model,
+    probs_bool,
     batch_token_limit,
     batch_requests_limit,
     total,
@@ -85,7 +94,7 @@ async def main_batch_processing_loop(
         # Set batch index and send requests
         batch = df.iloc[start_idx:batch_end_idx]
         tasks = [
-            call_openai_async(session, tweet, system_prompt, user_prompt, model)
+            call_openai_async(session, tweet, system_prompt, user_prompt, model, probs_bool)
             for tweet in batch["Full Text"]
         ]
         start_time = time.time()
@@ -97,7 +106,15 @@ async def main_batch_processing_loop(
             if isinstance(result, Exception):
                 log_callback(f"Error processing text at row {tweet_idx}: {result}")
             else:
-                df.at[tweet_idx, "Sentiment"] = result
+                if probs_bool:
+                    sentiment, logprob = result  # unpack the tuple
+                    df.at[tweet_idx, "Sentiment"] = sentiment
+                    prob = math.exp(logprob)
+                    df.at[tweet_idx, "Probs"] = prob
+                else:
+                    sentiment = result 
+                    df.at[tweet_idx, "Sentiment"] = sentiment
+
 
         processed += len(results)
         progress = (processed / total) * 90
@@ -119,56 +136,60 @@ async def reprocess_errors(
     system_prompt,
     user_prompt,
     model,
+    probs_bool,
     batch_token_limit,
     batch_requests_limit,
     session,
+    errored_df,
 ):
-    errored_df = df[df["Sentiment"].isin(["Error", ""])]
-    if not errored_df.empty:
-        log_callback(
-            f"Waiting for rate limit timer before reprocessing {len(errored_df)} errored mentions..."
+    log_callback(
+        f"Waiting for rate limit timer before reprocessing {len(errored_df)} errored mentions..."
+    )
+    await asyncio.sleep(60)  # Wait for 60 seconds before starting
+
+    total_errors = len(errored_df)
+    processed_errors = 0
+    start_idx = 0
+
+    while start_idx < len(errored_df):
+        batch_end_idx = calculate_batch_size(
+            errored_df, batch_token_limit, batch_requests_limit, start_idx
         )
-        await asyncio.sleep(60)  # Wait for 60 seconds before starting
 
-        total_errors = len(errored_df)
-        processed_errors = 0
-        start_idx = 0
+        # Reprocess the batch of errored tweets
+        batch = errored_df.iloc[start_idx:batch_end_idx]
+        tasks = [
+            call_openai_async(session, tweet, system_prompt, user_prompt, model, probs_bool)
+            for tweet in batch["Full Text"]
+        ]
+        start_time = time.time()
+        results = await asyncio.gather(*tasks, return_exceptions=True)
 
-        while start_idx < len(errored_df):
-            batch_end_idx = calculate_batch_size(
-                errored_df, batch_token_limit, batch_requests_limit, start_idx
-            )
-
-            # Reprocess the batch of errored tweets
-            batch = errored_df.iloc[start_idx:batch_end_idx]
-            tasks = [
-                call_openai_async(session, tweet, system_prompt, user_prompt, model)
-                for tweet in batch["Full Text"]
-            ]
-            start_time = time.time()
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-
-            # Handle results for errored tweets
-            for tweet_idx, result in zip(batch.index, results):
-                if isinstance(result, Exception):
-                    log_callback(
-                        f"Error reprocessing text at row {tweet_idx}: {result}"
-                    )
-                    df.at[tweet_idx, "Sentiment"] = "Final Error"
+        # Handle results for errored tweets
+        for tweet_idx, result in zip(batch.index, results):
+            if isinstance(result, Exception):
+                log_callback(f"Error processing text at row {tweet_idx}: {result}")
+            else:
+                if probs_bool:
+                    sentiment, logprob = result  # unpack the tuple
+                    df.at[tweet_idx, "Sentiment"] = sentiment
+                    prob = math.exp(logprob)
+                    df.at[tweet_idx, "Probs"] = prob
                 else:
-                    df.at[tweet_idx, "Sentiment"] = result
+                    sentiment = result 
+                    df.at[tweet_idx, "Sentiment"] = sentiment
 
-            processed_errors += len(results)
-            progress = (processed_errors / total_errors) * 90
-            update_progress_callback(
-                progress + 5
-            )  # Adjust progress callback for error processing
-            log_callback(
-                f"Reprocessed {processed_errors} of {total_errors} errored mentions."
-            )
-            start_idx = batch_end_idx
-        
-        return start_time
+        processed_errors += len(results)
+        progress = (processed_errors / total_errors) * 90
+        update_progress_callback(
+            progress + 5
+        )  # Adjust progress callback for error processing
+        log_callback(
+            f"Reprocessed {processed_errors} of {total_errors} errored mentions."
+        )
+        start_idx = batch_end_idx
+    
+    return start_time
 
 
 # Asynchronously calls the API for each tweet in the batch
@@ -178,6 +199,7 @@ async def call_openai_async(
     system_prompt: str,
     user_prompt: str,
     model: str,
+    probs_bool: bool = False,
     max_retries=6,
 ):
     payload = {
@@ -188,6 +210,7 @@ async def call_openai_async(
         ],
         "temperature": 0,
         "max_tokens": 1,
+        "logprobs": probs_bool,
     }
     headers = {
         "Content-Type": "application/json",
@@ -202,7 +225,11 @@ async def call_openai_async(
             if response.status == 200:
                 result = await response.json()
                 sentiment = result["choices"][0]["message"]["content"]
-                return sentiment.strip()
+                if probs_bool:
+                    logprob = result["choices"][0]["logprobs"]["content"][0]["logprob"]
+                    return sentiment.strip(), logprob
+                else:
+                    return sentiment.strip()
             elif attempt < max_retries - 1:
                 await asyncio.sleep(retry_delay)  # Wait before retrying
                 retry_delay += 2
