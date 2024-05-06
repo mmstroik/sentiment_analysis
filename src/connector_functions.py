@@ -63,6 +63,15 @@ def setup_sentiment_analysis(
             "Error", "Please provide both input and output file paths."
         )
         return
+    if not os.path.exists(input_file):
+        log_message(f"Error: The file '{os.path.basename(input_file)}' does not exist.")
+        messagebox.showerror(
+            "Error",
+            f"The file '{os.path.basename(input_file)}' does not exist.",
+        )
+        enable_button()
+        return
+    
     model, batch_token_limit, batch_requests_limit = select_model(gpt_model)
     system_prompt, user_prompt = set_prompts(
         customization_option, company_entry, system_prompt_entry, user_prompt_entry
