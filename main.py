@@ -51,7 +51,7 @@ def disable_button():
 def setup_progress_bar(placeholder_frame, progress_var):
     if not hasattr(placeholder_frame, "progress_bar"):
         progress_bar = ttk.Progressbar(
-            placeholder_frame, length=400, variable=progress_var, maximum=100
+            placeholder_frame, length=450, variable=progress_var, maximum=100
         )
         progress_bar.pack(fill=tk.BOTH, expand=True)
         placeholder_frame.progress_bar = progress_bar
@@ -344,7 +344,7 @@ run_button = tk.Button(
 )
 run_button.pack()
 
-placeholder_frame = tk.Frame(main_frame, height=20, width=400)
+placeholder_frame = tk.Frame(main_frame, height=20, width=450)
 placeholder_frame.pack(pady=10)
 placeholder_frame.pack_propagate(False)
 
