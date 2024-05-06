@@ -108,7 +108,7 @@ def run_sentiment_analysis_thread(
     bw_checkbox_var,
     logprob_checkbox_var,
 ):
-    log_message(f"Reading file: '{os.path.basename(input_file)}'...")
+    log_message(f"-------\nReading file: '{os.path.basename(input_file)}'...")
 
     df = pd.read_excel(input_file, header=None)
 
@@ -150,6 +150,8 @@ def run_sentiment_analysis_thread(
         
     if logprob_checkbox_var:
         probs_bool = True
+    else:
+        probs_bool = False
 
     log_message(f"Starting sentiment analysis with {model}...")
     loop = asyncio.new_event_loop()
@@ -170,7 +172,7 @@ def run_sentiment_analysis_thread(
     loop.close()
     
     if bw_checkbox_var:
-        log_message(f"-----\nUpdating sentiment values in Brandwatch...")
+        log_message(f"-------\nUpdating sentiment values in Brandwatch...")
         update_bw_sentiment(df, log_message)
 
     log_message(f"Saving results to excel...")
@@ -191,7 +193,7 @@ def run_sentiment_analysis_thread(
     elapsed_time = time.time() - start_time
     remaining_time = max(60 - elapsed_time, 0)
     if remaining_time > 0:
-        log_message(f"Waiting for {int(remaining_time)} more seconds before enabling the button (rate limit)...")
+        log_message(f"Waiting {int(remaining_time)} more seconds before enabling the Run button...")
         time.sleep(remaining_time)
         log_message("Cooldown complete.")
 

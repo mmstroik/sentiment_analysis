@@ -203,7 +203,7 @@ output_label = tk.Label(main_frame, text="Output File:", font=("Segoe UI", 12))
 output_label.pack(pady=(20, 0))
 
 output_var = tk.StringVar()
-output_var.trace("w", check_file_exists)
+output_var.trace_add("write", check_file_exists)
 
 output_entry = tk.Entry(main_frame, textvariable=output_var, width=55, font=("Segoe UI", 11))
 output_entry.pack()
@@ -212,7 +212,7 @@ output_button = tk.Button(
     main_frame, text="Browse", font=("Segoe UI", 12), command=browse_output_file
 )
 output_button.pack()
-warning_label = tk.Label(main_frame, text="", font=("Segoe UI", 11), fg="red")
+warning_label = tk.Label(main_frame, text="", font=("Segoe UI", 10, "italic"), fg="red")
 warning_label.pack()
 
 
@@ -324,7 +324,7 @@ user_prompt_label.pack(side=tk.LEFT, padx=(5, 0))
 
 user_prompt_entry_frame = tk.Frame(main_frame)
 
-user_prompt_entry = tk.Entry(user_prompt_entry_frame, width=8, font=("Segoe UI", 11))
+user_prompt_entry = tk.Entry(user_prompt_entry_frame, width=7, font=("Segoe UI", 11))
 user_prompt_entry.insert(tk.END, "Text:")
 user_prompt_entry.pack(side=tk.LEFT)
 user_prompt_tweet_label = tk.Label(
