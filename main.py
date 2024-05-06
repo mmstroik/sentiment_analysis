@@ -2,11 +2,17 @@ import ctypes
 import os
 import sys
 import tkinter as tk
-from tkinter import filedialog, scrolledtext, ttk
+from tkinter import filedialog, scrolledtext
 import tkinter.font as tkFont
+from tkinter.font import nametofont
 import webbrowser
 
-import sv_ttk
+import ttkbootstrap as ttk
+from ttkbootstrap.constants import *
+from ttkbootstrap.utility import enable_high_dpi_awareness
+from ttkbootstrap.scrolled import ScrolledFrame
+from ttkbootstrap.style import StyleBuilderTTK
+
 import pandas as pd
 import darkdetect
 from functools import partial
@@ -159,7 +165,7 @@ def set_dpi_awareness():
         ctypes.windll.user32.SetProcessDPIAware()
     except Exception:
         try:
-            ctypes.windll.shcore.SetProcessDpiAwareness(1)
+            ctypes.windll.shcore.SetProcessDpiAwareness(2)
         except AttributeError:
             pass
         except Exception as e:
@@ -169,23 +175,32 @@ def set_dpi_awareness():
 """GUI SETUP"""
 
 
-set_dpi_awareness()
+enable_high_dpi_awareness()
 
 # Create the main window
-window = tk.Tk()
+window = ttk.Window()
+if darkdetect.isDark():
+    style = ttk.Style("darkly")
+else:
+    style = ttk.Style("sandstoney")
+window.minsize(600, 200)
 window.title("Sentiment Analysis Tool")
 icon_path = resource_path("pie_icon.ico")
 window.iconbitmap(icon_path)
+
+default_font = tkFont.nametofont("TkDefaultFont")
+default_font.configure(family="Segoe UI")
 
 # Create a progress bar variable
 progress_var = tk.DoubleVar()
 
 # Create frames for input/output and instructions
-main_frame = tk.Frame(window)
-main_frame.pack(side=tk.RIGHT, padx=10, pady=10, expand=True, fill=tk.BOTH)
+main_frame = ScrolledFrame(window)
+main_frame.hide_scrollbars()
+main_frame.pack(side=RIGHT, padx=10, pady=10, expand=True, fill=BOTH)
 
-instructions_frame = tk.Frame(window)
-instructions_frame.pack(side=tk.LEFT, padx=10, pady=10, expand=True, fill=tk.BOTH)
+instructions_frame = ttk.Frame(window)
+instructions_frame.pack(side=LEFT, padx=10, pady=10, expand=True, fill=BOTH)
 
 # Input file packing
 input_label = tk.Label(main_frame, text="Input File:", font=("Segoe UI", 12))
@@ -219,12 +234,11 @@ warning_label.pack()
 # BW API update checkbox
 bw_checkbox_var = tk.IntVar()
 style = ttk.Style()
-style.configure("TCheckbutton", font=("Segoe UI", 14))
+
 bw_checkbox = ttk.Checkbutton(
     main_frame,
     text="Update sentiment values in Brandwatch",
     variable=bw_checkbox_var,
-    style="TCheckbutton",
 )
 bw_checkbox.pack(pady=(0, 0))
 bw_checkbox_label = tk.Label(
@@ -238,7 +252,7 @@ bw_checkbox_label.pack()
 # logprob checkbox
 logprob_checkbox_var = tk.IntVar()
 style = ttk.Style()
-style.configure("TCheckbutton", font=("Segoe UI", 14))
+style.configure("TCheckbutton", font=("Segoe UI", 12))
 logprob_checkbox = ttk.Checkbutton(
     main_frame,
     text="Output probabilities for each sentiment prediction",
@@ -411,10 +425,7 @@ instructions_text_area.insert(
 )
 instructions_text_area.configure(state="disabled")
 
-if darkdetect.isDark():
-    sv_ttk.set_theme("dark")
-else:
-    sv_ttk.set_theme("light")
+
 
 # Start the GUI event loop
 window.mainloop()
