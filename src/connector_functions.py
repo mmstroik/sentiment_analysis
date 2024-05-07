@@ -18,7 +18,7 @@ def select_model(gpt_model):
         "gpt-3.5-turbo": {"token_limit": 160000, "requests_limit": 5000},
         "gpt-4-turbo": {"token_limit": 600000, "requests_limit": 5000},
     }
-    model = "gpt-3.5-turbo" if gpt_model == "GPT-3.5 (Default)" else "gpt-4-turbo"
+    model = "gpt-3.5-turbo" if gpt_model == "GPT-3.5" else "gpt-4-turbo"
     return (
         model,
         model_limits[model]["token_limit"],

@@ -10,8 +10,6 @@ import webbrowser
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 from ttkbootstrap.utility import enable_high_dpi_awareness
-from ttkbootstrap.scrolled import ScrolledFrame
-from ttkbootstrap.style import StyleBuilderTTK
 
 import pandas as pd
 import darkdetect
@@ -57,7 +55,7 @@ def disable_button():
 def setup_progress_bar(placeholder_frame, progress_var):
     if not hasattr(placeholder_frame, "progress_bar"):
         progress_bar = ttk.Progressbar(
-            placeholder_frame, length=400, variable=progress_var, maximum=100
+            placeholder_frame, length=400, variable=progress_var, maximum=100, style="TProgressbar"
         )
         progress_bar.pack(fill=tk.BOTH, expand=True)
         placeholder_frame.progress_bar = progress_bar
@@ -134,7 +132,7 @@ def resource_path(relative_path):
 
 
 # Handle GUI changes based on the customization option selected
-def on_customization_selected(event):
+def on_customization_selected(*args):
     selected_option = customization_var.get()
     if selected_option == "Default":
         company_label.pack_forget()
@@ -178,12 +176,12 @@ def set_dpi_awareness():
 enable_high_dpi_awareness()
 
 # Create the main window
-window = ttk.Window()
+window = tk.Tk()
 if darkdetect.isDark():
-    style = ttk.Style("darkly")
+    style = ttk.Style("quadrant")
 else:
-    style = ttk.Style("sandstoney")
-window.minsize(600, 200)
+    style = ttk.Style("quadrant-light")
+window.minsize(450, 200)
 window.title("Sentiment Analysis Tool")
 icon_path = resource_path("pie_icon.ico")
 window.iconbitmap(icon_path)
@@ -195,11 +193,11 @@ default_font.configure(family="Segoe UI")
 progress_var = tk.DoubleVar()
 
 # Create frames for input/output and instructions
-main_frame = ScrolledFrame(window)
-main_frame.hide_scrollbars()
+main_frame = tk.Frame(window)
+
 main_frame.pack(side=RIGHT, padx=10, pady=10, expand=True, fill=BOTH)
 
-instructions_frame = ttk.Frame(window)
+instructions_frame = tk.Frame(window)
 instructions_frame.pack(side=LEFT, padx=10, pady=10, expand=True, fill=BOTH)
 
 # Input file packing
@@ -231,14 +229,17 @@ warning_label = tk.Label(main_frame, text="", font=("Segoe UI", 10, "italic"), f
 warning_label.pack()
 
 
+style.configure("Toolbutton", font=("Segoe UI", 12))
+
+
 # BW API update checkbox
 bw_checkbox_var = tk.IntVar()
-style = ttk.Style()
 
 bw_checkbox = ttk.Checkbutton(
     main_frame,
-    text="Update sentiment values in Brandwatch",
+    text=" Update sentiment values in Brandwatch",
     variable=bw_checkbox_var,
+    style="Roundtoggle.Toolbutton",
 )
 bw_checkbox.pack(pady=(0, 0))
 bw_checkbox_label = tk.Label(
@@ -251,50 +252,53 @@ bw_checkbox_label.pack()
 
 # logprob checkbox
 logprob_checkbox_var = tk.IntVar()
-style = ttk.Style()
-style.configure("TCheckbutton", font=("Segoe UI", 12))
 logprob_checkbox = ttk.Checkbutton(
     main_frame,
-    text="Output probabilities for each sentiment prediction",
+    text=" Output probabilities for each sentiment prediction",
     variable=logprob_checkbox_var,
-    style="TCheckbutton",
+    style="Roundtoggle.Toolbutton",
 )
-logprob_checkbox.pack(pady=(10, 0))
+logprob_checkbox.pack(pady=(15, 0))
 
 
-# Customization option packing
+# Prompt customization option packing
+style.configure("radios.Toolbutton", font=("Segoe UI", 11), padding=5)
 customization_label = tk.Label(
     main_frame, text="Prompt Customization Option:", font=("Segoe UI", 12)
 )
 customization_label.pack(pady=(20, 0))
-customization_var = tk.StringVar()
-customization_var.set("Default")
-customization_dropdown = ttk.Combobox(
-    main_frame,
-    textvariable=customization_var,
-    values=["Default", "Company", "Custom"],
-    font=("Segoe UI", 11),
-    state="readonly",
-    width=12,
-)
-customization_dropdown.bind("<<ComboboxSelected>>", on_customization_selected)
-customization_dropdown.pack()
+customization_var = tk.StringVar(value="Default")
+prompt_radio_frame = tk.Frame(main_frame)
+prompt_radio_frame.pack()
+prompt_options = ["Default", "Company", "Custom"]
+for option in prompt_options:
+    prompt_radio_button = ttk.Radiobutton(
+        prompt_radio_frame,
+        text=option,
+        value=option,
+        variable=customization_var,
+        style='radios.Toolbutton',
+        command=on_customization_selected
+    )
+    prompt_radio_button.pack(side='left')
 
 
 # GPT Model Selection
 gpt_model_label = tk.Label(main_frame, text="GPT Model:", font=("Segoe UI", 12))
 gpt_model_label.pack(pady=(20, 0))
-gpt_model_var = tk.StringVar()
-gpt_model_var.set("GPT-3.5 (Default)")  # Default selection
-gpt_model_dropdown = ttk.Combobox(
-    main_frame,
-    textvariable=gpt_model_var,
-    values=["GPT-3.5 (Default)", "GPT-4"],
-    font=("Segoe UI", 11),
-    state="readonly",
-    width=16,
-)
-gpt_model_dropdown.pack()
+gpt_model_var = tk.StringVar(value="GPT-3.5")
+model_radio_frame = tk.Frame(main_frame)
+model_radio_frame.pack()
+model_options = ["GPT-3.5", "GPT-4"]
+for option in model_options:
+    model_radio_button = ttk.Radiobutton(
+        model_radio_frame,
+        text=option,
+        value=option,
+        variable=gpt_model_var,
+        style='radios.Toolbutton',
+    )
+    model_radio_button.pack(side='left')
 
 
 # Company entry
@@ -348,24 +352,25 @@ user_prompt_tweet_label.pack(side=tk.LEFT, padx=(5, 0))
 
 
 # Run button
-run_label = tk.Label(main_frame, text="")
-run_label.pack(pady=(5, 0))
-run_button = tk.Button(
+style.configure("run.TButton", font=("Segoe UI", 13))
+run_button = ttk.Button(
     main_frame,
     text="Run Sentiment Analysis",
-    font=("Segoe UI", 12),
+    style="run.TButton",
     command=start_sentiment_analysis,
 )
-run_button.pack()
+run_button.pack(pady=(35, 0))
 
-placeholder_frame = tk.Frame(main_frame, height=20, width=400)
-placeholder_frame.pack(pady=10)
+
+# Placeholder frame for progress bar
+placeholder_frame = tk.Frame(main_frame, height=15, width=400)
+placeholder_frame.pack(pady=(10, 0))
 placeholder_frame.pack_propagate(False)
 
 
 # Logging section
 log_label = tk.Label(main_frame, text="Log Messages:", font=("Segoe UI", 12))
-log_label.pack(pady=(0, 0))
+log_label.pack(pady=(5, 0))
 log_text_area = scrolledtext.ScrolledText(
     main_frame, wrap=tk.WORD, width=55, height=9, font=("Segoe UI", 11)
 )
@@ -381,7 +386,6 @@ instructions_text = """1. Ensure your input file is a .xlsx and contains a colum
 3. Click on the "Browse" button under "Output File" and choose a location and identifiable filename for the output file.
 
 4. (Optional): Update sentiment values in Brandwatch (will also mark updated mentions as "Checked" in BW).
-* Note: Ensure input file contains the columns "Query Id" and "Resource Id".
 
 5. (Optional) Select a customization option:
 * Default: Use the default system and user prompts.
