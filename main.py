@@ -278,7 +278,8 @@ for option in prompt_options:
         value=option,
         variable=customization_var,
         style='radios.Toolbutton',
-        command=on_customization_selected
+        command=on_customization_selected,
+        width=8,
     )
     prompt_radio_button.pack(side='left')
 
@@ -297,6 +298,7 @@ for option in model_options:
         value=option,
         variable=gpt_model_var,
         style='radios.Toolbutton',
+        width=7,
     )
     model_radio_button.pack(side='left')
 
@@ -363,14 +365,14 @@ run_button.pack(pady=(35, 0))
 
 
 # Placeholder frame for progress bar
-placeholder_frame = tk.Frame(main_frame, height=15, width=400)
-placeholder_frame.pack(pady=(10, 0))
+placeholder_frame = tk.Frame(main_frame, height=10, width=400)
+placeholder_frame.pack(pady=(15, 0))
 placeholder_frame.pack_propagate(False)
 
 
 # Logging section
 log_label = tk.Label(main_frame, text="Log Messages:", font=("Segoe UI", 12))
-log_label.pack(pady=(5, 0))
+log_label.pack(pady=(10, 0))
 log_text_area = scrolledtext.ScrolledText(
     main_frame, wrap=tk.WORD, width=55, height=9, font=("Segoe UI", 11)
 )
