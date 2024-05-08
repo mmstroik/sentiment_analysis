@@ -380,7 +380,7 @@ log_text_area.configure(state="disabled")
 log_text_area.pack(pady=(2, 5))
 
 instructions_text = """1. Ensure your input file is a .xlsx and contains a column named "Full Text".
-* Note: Works with BW exports with column headers in row 10
+* Note: Works with column headers in any of the first 20 rows (BW exports).
 
 2. Click on the "Browse" button under "Input File" and select the file containing the mentions/tweets.
 * Note: If the file is saved to OneDrive, close it before running the tool.
