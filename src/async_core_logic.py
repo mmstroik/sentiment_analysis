@@ -165,7 +165,7 @@ async def reprocess_errors(
         start_time = time.time()
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
-        # Handle results for errored tweets
+        # Handle results
         for tweet_idx, result in zip(batch.index, results):
             if isinstance(result, Exception):
                 log_callback(f"Error processing text at row {tweet_idx}: {result}")
