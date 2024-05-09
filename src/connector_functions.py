@@ -71,6 +71,23 @@ def setup_sentiment_analysis(
         )
         enable_button()
         return
+    output_dir = os.path.dirname(output_file)
+    if not os.path.exists(output_dir):
+        log_message(f"Error: The output directory '{output_dir}' does not exist.")
+        messagebox.showerror(
+            "Error",
+            f"The output directory '{output_dir}' does not exist.",
+        )
+        enable_button()
+        return
+    if not output_file.lower().endswith('.xlsx'):
+        log_message(f"Error: The output file '{os.path.basename(output_file)}' does not end with '.xlsx'.")
+        messagebox.showerror(
+            "Error",
+            f"The output file '{os.path.basename(output_file)}' does not end with '.xlsx'.",
+        )
+        enable_button()
+        return   
     
     model, batch_token_limit, batch_requests_limit = select_model(gpt_model)
     system_prompt, user_prompt = set_prompts(
