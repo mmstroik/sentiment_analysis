@@ -97,9 +97,10 @@ async def main_batch_processing_loop(
             call_openai_async(session, tweet, system_prompt, user_prompt, model, probs_bool)
             for tweet in batch["Full Text"]
         ]
-        start_time = time.time()
-        timer = asyncio.create_task(asyncio.sleep(60))
+        
         results = await asyncio.gather(*tasks, return_exceptions=True)
+        timer = asyncio.create_task(asyncio.sleep(60))
+        start_time = time.time()
 
         # Handle results
         for tweet_idx, result in zip(batch.index, results):
@@ -162,8 +163,8 @@ async def reprocess_errors(
             call_openai_async(session, tweet, system_prompt, user_prompt, model, probs_bool)
             for tweet in batch["Full Text"]
         ]
-        start_time = time.time()
         results = await asyncio.gather(*tasks, return_exceptions=True)
+        start_time = time.time()
 
         # Handle results
         for tweet_idx, result in zip(batch.index, results):
