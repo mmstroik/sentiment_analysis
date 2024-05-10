@@ -210,23 +210,31 @@ input_button = tk.Button(
 )
 input_button.pack()
 
+notebook = ttk.Notebook(main_frame, padding=2)
+notebook.pack(expand=True, fill=BOTH)
+
+tab1_frame = tk.Frame(notebook)
 
 # Output file packing
-output_label = tk.Label(main_frame, text="Output File:", font=("Segoe UI", 12))
-output_label.pack(pady=(20, 0))
+output_label = tk.Label(tab1_frame, text="Output File:", font=("Segoe UI", 12))
+output_label.pack(pady=(2, 0))
 
 output_var = tk.StringVar()
 output_var.trace_add("write", check_file_exists)
 
-output_entry = tk.Entry(main_frame, textvariable=output_var, width=55, font=("Segoe UI", 11))
+output_entry = tk.Entry(tab1_frame, textvariable=output_var, width=55, font=("Segoe UI", 11))
 output_entry.pack()
 
 output_button = tk.Button(
-    main_frame, text="Browse", font=("Segoe UI", 12), command=browse_output_file
+    tab1_frame, text="Browse", font=("Segoe UI", 12), command=browse_output_file
 )
 output_button.pack()
-warning_label = tk.Label(main_frame, text="", font=("Segoe UI", 10, "italic"), fg="red")
+
+warning_label = tk.Label(tab1_frame, text="", font=("Segoe UI", 10, "italic"), fg="#b53d38")
 warning_label.pack()
+
+# Add the frame to the notebook as a new tab
+notebook.add(tab1_frame, text='Output')
 
 
 style.configure("Toolbutton", font=("Segoe UI", 12))
@@ -279,7 +287,7 @@ for option in prompt_options:
         variable=customization_var,
         style='radios.Toolbutton',
         command=on_customization_selected,
-        width=8,
+        width=9,
     )
     prompt_radio_button.pack(side='left')
 
