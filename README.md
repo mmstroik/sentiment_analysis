@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Sentiment Analysis Tool is a GUI-based Python application that uses the OpenAI API to analyze the sentiment of text samples (e.g., tweets) stored in an Excel file. It has prompt customization options and integration with the Brandwatch API for updating BW metadata.
+The Sentiment Analysis Tool is a GUI-based Python application that uses the OpenAI API to analyze the sentiment of text samples (e.g., tweets) stored in an Excel file. It has prompt customization options and integration with the Brandwatch API for updating sentiment and other metadata in BW.
 
 ## Table of Contents
 
@@ -13,17 +13,18 @@ The Sentiment Analysis Tool is a GUI-based Python application that uses the Open
   - [Prompt Customization](#prompt-customization)
   - [Model Selection](#model-selection)
   - [Brandwatch Integration](#brandwatch-integration)
+  - [**Rate Limits**](#rate-limits)
 - [Troubleshooting](#troubleshooting)
 
 ## Basic Usage
 
 ### Setup
 
-- Go to `Quadrant Digital Team - Documents/General/SentimentAnalysis/App/` via your file explorer* and double click the `Sentiment-Analysis-Tool` file to launch the tool.
-  - *The tool cannot be launched directly from the SharePoint website or Office 365. It can only be launched from SharePoint using your file explorer (via [synced](https://support.microsoft.com/en-us/office/sync-sharepoint-files-and-folders-87a96948-4dd7-43e4-aca1-53f3e18bea9b) library or folder [shortcut](https://support.microsoft.com/en-us/office/add-shortcuts-to-shared-folders-in-onedrive-for-work-or-school-d66b1347-99b7-4470-9360-ffc048d35a33)).
+- Go to `Quadrant Digital Team - Documents/General/SentimentAnalysis/App/` via your file explorer* and double click the `Sentiment-Analysis-Tool` file to launch the app.
+  - *The tool cannot be launched directly from the SharePoint _website_ or Office 365. It can only be launched from SharePoint using your file explorer (via [synced](https://support.microsoft.com/en-us/office/sync-sharepoint-files-and-folders-87a96948-4dd7-43e4-aca1-53f3e18bea9b) library or folder [shortcut](https://support.microsoft.com/en-us/office/add-shortcuts-to-shared-folders-in-onedrive-for-work-or-school-d66b1347-99b7-4470-9360-ffc048d35a33)).
 - Ensure that the text samples are stored under a column named "Full Text" in the Excel file.
-  - The column names can be 10th row (Brandwatch exports), and the file can contain additional columns
-  - If you are using the Brandwatch integration, ensure the file has "Query Id" and "Resource Id" columns.
+  - The column names can be in any of the first 16 rows, so Brandwatch exports will work without having to open/alter the downloaded file first.
+  - If you are using the Brandwatch integration, ensure the input file has "Query Id" and "Resource Id" columns (included by default in BW exports).
 
 ### In the Sentiment Analysis Tool window
 
@@ -36,20 +37,18 @@ The Sentiment Analysis Tool is a GUI-based Python application that uses the Open
    - Default: Use the default system and user prompts.
    - Company: Specify a company name to analyze sentiment toward that company.
    - Custom: Provide custom *system and **user prompts
-5. (Optional): Choose a specific model to use
-   - GPT-3.5 is the default model and is cheap and good for large batches of tweets.
-   - GPT-4 is good for smaller sample sizes and large bodies of text (like Press Releases from Quorum) but is 20x more expensive.
+5. (Optional): Choose a specific [model](#model-selection) to use
 6. Click on the "Run Sentiment Analysis" button to start the analysis process.
 7. Once the analysis is complete, a success message will be displayed, and the output Excel file will be saved to the location you specified.
-   - The tool will process the tweets/samples in batches based on input tokens and the API rate limits. It waits for ~60 seconds between each batch, so it could take anywhere from 5 sec to >10 min depending on the sample size and length of the text inputs.
+   - The process could take anywhere from 5 sec to >10 min depending on the sample size and length of the text inputs.
 
 ## Documentation
 
 ### Prompt Customization
 
 - **Default**: General sentiment analysis of the text samples.
-  - System prompt: 'Classify the sentiment of the following Text in one word from this list [Positive, Neutral, Negative].'
-  - User prompt: 'Text: "[text sample]" \nSentiment:'
+  - Base System prompt: 'Classify the sentiment of the following Text in one word from this list [Positive, Neutral, Negative].'
+  - Base User prompt: 'Text: "[text sample]" \nSentiment:'
 - **Company**: Analyze sentiment toward a specific company.
   - Alters the system prompt to include "toward [company]" using the specified company name.
   - Can also be used to analyze sentiment toward a specific topic or trend (e.g., AI).
@@ -68,6 +67,18 @@ The Sentiment Analysis Tool is a GUI-based Python application that uses the Open
   - Requires the input file to contain the columns "Query Id" and "Resource Id".
   - This setting will additionally mark the updated mentions as "Checked" in Brandwatch.
 
+### **Rate Limits**
+
+- OpenAI API
+  - 160,000 tokens per minute for GPT-3.5-turbo
+  - 600,000 tokens per minute for GPT-4-turbo
+  - 5000 requests (posts/samples) per minute for both models
+  - The tool will calculate the token counts of each text sample and then process the tweets/samples in batches based on input tokens and the API rate limits, waiting for ~60 seconds between each batch.
+- Brandwatch API
+  - 30 API calls per 10 minutes
+  - 1361 mentions per batch/call (?)
+  - Sentiment values will be sent to Brandwatch in batches of 1361, and the tool will pause for 10 minutes if it hits a rate limit
+  
 ## Troubleshooting
 
 If you encounter a "file permissions" error message:
