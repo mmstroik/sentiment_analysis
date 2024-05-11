@@ -27,3 +27,4 @@ tiktoken==0.6.0
 tzdata==2024.1
 urllib3==2.2.1
 yarl==1.9.4
+git+https://github.com/israel-dryer/ttkbootstrap.git
