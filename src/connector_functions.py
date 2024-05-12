@@ -71,7 +71,7 @@ def setup_sentiment_analysis(
         )
         enable_button()
         return
-    
+
     model, batch_token_limit, batch_requests_limit = select_model(gpt_model)
     system_prompt, user_prompt = set_prompts(
         customization_option, company_entry, system_prompt_entry, user_prompt_entry
@@ -121,7 +121,7 @@ def run_sentiment_analysis_thread(
 
     df = pd.read_excel(input_file, header=None)
 
-    # Find the row containing the 'Full Text' column
+    # Find 'Full Text' column
     full_text_row = (
         df.iloc[:20]
         .apply(lambda row: row.astype(str).str.contains("Full Text").any(), axis=1)
@@ -156,7 +156,7 @@ def run_sentiment_analysis_thread(
 
     if "Sentiment" not in df.columns:
         df["Sentiment"] = ""
-        
+
     if logprob_checkbox_var:
         probs_bool = True
     else:
@@ -179,7 +179,7 @@ def run_sentiment_analysis_thread(
         )
     )
     loop.close()
-    
+
     if bw_checkbox_var:
         log_message(f"-------\nUpdating sentiment values in Brandwatch...")
         update_bw_sentiment(df, log_message)
@@ -187,13 +187,13 @@ def run_sentiment_analysis_thread(
     log_message(f"Saving results to excel...")
     df.drop(columns=["Token Count"], inplace=True)
     update_progress_gui(98)
-    
+
     if logprob_checkbox_var:
         cols = df.columns.tolist()
-        sentiment_index = cols.index('Sentiment')
-        cols = cols[:sentiment_index+1] + ['Probs'] + cols[sentiment_index+1:-1]
+        sentiment_index = cols.index("Sentiment")
+        cols = cols[: sentiment_index + 1] + ["Probs"] + cols[sentiment_index + 1 : -1]
         df = df[cols]
-    
+
     df.to_excel(output_file, index=False)
     update_progress_gui(100)
     log_message(f"Sentiment analysis results saved to {output_file}.")
@@ -202,10 +202,94 @@ def run_sentiment_analysis_thread(
     elapsed_time = time.time() - start_time
     remaining_time = max(60 - elapsed_time, 0)
     if remaining_time > 0:
-        log_message(f"Waiting {int(remaining_time)} more seconds before enabling the Run button...")
+        log_message(
+            f"Waiting {int(remaining_time)} more seconds before enabling the Run button..."
+        )
         time.sleep(remaining_time)
         log_message("Cooldown complete.")
 
     enable_button()
     return
 
+
+"""BRANDWATCH UPLOAD-ONLY CONNECTOR FUNCTIONS"""
+
+
+def create_bw_upload_thread(
+    input_file, update_progress_gui, log_message, enable_button, disable_button
+):
+    try:
+        thread = threading.Thread(
+            target=setup_bw_upload,
+            args=(
+                input_file,
+                update_progress_gui,
+                log_message,
+                enable_button,
+                disable_button,
+            ),
+        )
+        thread.start()
+    except Exception as e:
+        messagebox.showerror("Error", f"An error occurred: {str(e)}")
+        enable_button()
+
+
+def setup_bw_upload(
+    input_file,
+    update_progress_gui,
+    log_message,
+    enable_button,
+    disable_button,
+):
+
+    log_message(f"Reading file: '{os.path.basename(input_file)}'...")
+
+    df = pd.read_excel(input_file, header=None)
+
+    full_text_row = (
+        df.iloc[:20]
+        .apply(lambda row: row.astype(str).str.contains("Full Text").any(), axis=1)
+        .idxmax()
+    )
+
+    if full_text_row is None:
+        log_message(
+            "Error: The input file does not contain the required column 'Full Text'."
+        )
+        messagebox.showerror(
+            "Error",
+            "The input file does not contain the required column 'Full Text'.",
+        )
+        enable_button()
+        return
+
+    # Drop the rows above the 'Full Text' row and set the 'Full Text' row as the header
+    df.columns = df.iloc[full_text_row]
+    df = df.iloc[(full_text_row + 1) :].reset_index(drop=True)
+
+    log_message("'Full Text' column found.")
+
+    if "Query Id" not in df.columns or "Resource Id" not in df.columns:
+        messagebox.showerror(
+            "Error",
+            "The input file does not contain the required BW columns 'Query Id' or 'Resource Id'.",
+        )
+        enable_button()
+        return
+
+    if "Sentiment" not in df.columns:
+        messagebox.showerror(
+            "Error",
+            "The input file does not contain the required BW columns 'Query Id' or 'Resource Id'.",
+        )
+        enable_button()
+        return
+
+    log_message(f"Updating sentiment values in Brandwatch...")
+    update_bw_sentiment(df, log_message)
+    update_progress_gui(98)
+    update_progress_gui(100)
+    messagebox.showinfo("Success", "Brandwatch upload completed successfully.")
+    enable_button()
+    return
