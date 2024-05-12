@@ -20,7 +20,7 @@ def update_bw_sentiment(df, log_callback):
     total_sent = 0
     i = 0
     retries = 0
-    rate_limit_wait_time = 60  # Start with 1 minute wait time
+    rate_limit_wait_time = 60  # Start with 1 min retry time
     while i < len(chunks):
         chunk = chunks[i]
         data = json.dumps(chunk)
@@ -34,7 +34,7 @@ def update_bw_sentiment(df, log_callback):
             time.sleep(rate_limit_wait_time)
             rate_limit_wait_time = min(
                 rate_limit_wait_time * 2, MAX_RATE_LIMIT_WAIT_TIME
-            )  # Double the wait time for the next retry, up to a maximum of 10 minutes
+            )  # Double wait time for the next retry, up to 10 minutes
             continue  # retry the same chunk
 
         elif result == "TRANSIENT_ERROR":
