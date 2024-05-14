@@ -239,11 +239,11 @@ notebook.pack(expand=True, fill=BOTH)
 
 # Sentiment tab
 sentiment_tab_frame = tk.Frame(notebook)
-notebook.add(sentiment_tab_frame, text="Full Sentiment Analysis")
+notebook.add(sentiment_tab_frame, text="Sentiment Analysis")
 
 # BW tab
 bw_tab_frame = tk.Frame(notebook)
-notebook.add(bw_tab_frame, text="Brandwatch Upload Only")
+notebook.add(bw_tab_frame, text="BW Upload Only")
 
 # Output file packing
 output_label = tk.Label(sentiment_tab_frame, text="Output File:", font=("Segoe UI", 12))
