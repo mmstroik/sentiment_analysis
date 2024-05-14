@@ -383,7 +383,7 @@ gpt_model_label.pack(pady=(20, 0))
 gpt_model_var = tk.StringVar(value="GPT-3.5")
 model_radio_frame = tk.Frame(sentiment_tab_frame)
 model_radio_frame.pack()
-model_options = ["GPT-3.5", "GPT-4"]
+model_options = ["GPT-3.5", "GPT-4", "GPT-4o"]
 for option in model_options:
     model_radio_button = ttk.Radiobutton(
         model_radio_frame,
