@@ -70,7 +70,7 @@ def setup_progress_bar(placeholder_frame, progress_var):
     if not hasattr(placeholder_frame, "progress_bar"):
         progress_bar = ttk.Progressbar(
             placeholder_frame,
-            length=475,
+            length=450,
             variable=progress_var,
             maximum=100,
             style="TProgressbar",
@@ -172,8 +172,8 @@ def on_customization_selected(*args):
     elif selected_option == "Custom":
         company_label.pack_forget()
         company_entry.pack_forget()
-        system_prompt_frame.pack(before=gpt_model_label, pady=(20, 0))
-        system_prompt_entry.pack(before=gpt_model_label, pady=(2, 0))
+        system_prompt_frame.pack(before=gpt_model_label, pady=(18, 0))
+        system_prompt_entry.pack(before=gpt_model_label, pady=(0, 0))
         user_prompt_frame.pack(before=gpt_model_label, pady=(5, 0))
         user_prompt_entry_frame.pack(before=gpt_model_label)
 
@@ -224,16 +224,23 @@ instructions_frame.pack(side=LEFT, padx=10, pady=10, expand=True, fill=BOTH)
 # Input file packing
 input_label = tk.Label(main_frame, text="Input File:", font=("Segoe UI", 12))
 input_label.pack()
-input_entry = tk.Entry(main_frame, width=55, font=("Segoe UI", 11))
-input_entry.pack()
+
+# Create a frame to hold the button and the entry
+input_frame = tk.Frame(main_frame)
+input_frame.pack()
+
+# Reduce the width of the entry and pack it to the right of the frame
+input_entry = tk.Entry(input_frame, width=45, font=("Segoe UI", 11))
+input_entry.pack(side=tk.RIGHT, padx=(0, 10))
+
+# Add a bit of packing in between the button and entry
 input_button = tk.Button(
-    main_frame, text="Browse", font=("Segoe UI", 12), command=browse_input_file
+    input_frame, text="Browse", font=("Segoe UI", 11), command=browse_input_file
 )
-input_button.pack()
+input_button.pack(side=tk.RIGHT, padx=(10, 0))
 
 # create notebook with tabs
-
-style.configure('TNotebook', tabposition='n', tabmargins=[10, 0, 10, 0]) # TODO: Fix tab margins
+style.configure('TNotebook', tabposition='n') 
 notebook = ttk.Notebook(main_frame, style='TNotebook', takefocus=False, padding=[0, 15, 0, 10])
 notebook.pack(expand=True, fill=BOTH)
 
@@ -247,23 +254,26 @@ notebook.add(bw_tab_frame, text="BW Upload Only")
 
 # Output file packing
 output_label = tk.Label(sentiment_tab_frame, text="Output File:", font=("Segoe UI", 12))
-output_label.pack(pady=(3, 0), padx=(5, 5))
+output_label.pack(pady=(3, 0))
 
 output_var = tk.StringVar()
 output_var.trace_add("write", check_file_exists)
 
+output_frame = tk.Frame(sentiment_tab_frame)
+output_frame.pack()
+
 output_entry = tk.Entry(
-    sentiment_tab_frame, textvariable=output_var, width=55, font=("Segoe UI", 11)
+    output_frame, textvariable=output_var, width=45, font=("Segoe UI", 11)
 )
-output_entry.pack()
+output_entry.pack(side=tk.RIGHT, padx=(0, 10))
 
 output_button = tk.Button(
-    sentiment_tab_frame,
+    output_frame,
     text="Browse",
-    font=("Segoe UI", 12),
+    font=("Segoe UI", 11),
     command=browse_output_file,
 )
-output_button.pack()
+output_button.pack(side=tk.RIGHT, padx=(10, 0))
 
 warning_label = tk.Label(
     sentiment_tab_frame, text="", font=("Segoe UI", 10, "italic"), fg="#b53d38"
@@ -281,12 +291,6 @@ bw_checkbox = ttk.Checkbutton(
     style="Roundtoggle.Toolbutton",
 )
 bw_checkbox.pack(pady=(0, 0))
-bw_checkbox_label = tk.Label(
-    sentiment_tab_frame,
-    text="(Requires 'Query Id' and 'Resource Id' columns in input file)",
-    font=("Segoe UI", 10, "italic"),
-)
-bw_checkbox_label.pack()
 
 
 # logprob checkbox
@@ -305,7 +309,7 @@ style.configure("radios.Toolbutton", font=("Segoe UI", 11), padding=5)
 customization_label = tk.Label(
     sentiment_tab_frame, text="Prompt Customization Option:", font=("Segoe UI", 12)
 )
-customization_label.pack(pady=(20, 0))
+customization_label.pack(pady=(15, 0))
 customization_var = tk.StringVar(value="Default")
 prompt_radio_frame = tk.Frame(sentiment_tab_frame)
 prompt_radio_frame.pack()
@@ -333,17 +337,17 @@ company_entry = tk.Entry(sentiment_tab_frame, width=16, font=("Segoe UI", 11))
 # System prompt
 system_prompt_frame = tk.Frame(sentiment_tab_frame)
 
-style.configure("reset.TButton", font=("Segoe UI", 10))
-system_prompt_reset_button = ttk.Button(
+system_prompt_reset_button = tk.Button(
     system_prompt_frame,
     text="Reset",
+    font=("Segoe UI", 10),
     command=reset_system_prompt,
-    style="reset.TButton",
 )
 system_prompt_reset_button.pack(side=tk.LEFT)
 system_prompt_label = tk.Label(
     system_prompt_frame, text="System Prompt:", font=("Segoe UI", 12)
 )
+
 system_prompt_label.pack(side=tk.LEFT, padx=(5, 0))
 
 system_prompt_entry = tk.Text(
@@ -404,7 +408,7 @@ sentiment_run_button = ttk.Button(
     style="run.TButton",
     command=start_sentiment_analysis,
 )
-sentiment_run_button.pack(pady=(35, 15))
+sentiment_run_button.pack(pady=(30, 10))
 
 
 # BW upload button
@@ -415,11 +419,11 @@ bw_upload_button = ttk.Button(
     style="run.TButton",
     command=start_bw_upload,
 )
-bw_upload_button.pack(pady=(35, 12))
+bw_upload_button.pack(pady=(30, 10))
 
 
 # Placeholder frame for progress bar
-placeholder_frame = tk.Frame(main_frame, height=10, width=475)
+placeholder_frame = tk.Frame(main_frame, height=10, width=450)
 placeholder_frame.pack(pady=(5, 0))
 placeholder_frame.pack_propagate(False)
 
@@ -442,6 +446,7 @@ instructions_text = """1. Ensure your input file is a .xlsx and contains a colum
 3. Click on the "Browse" button under "Output File" and choose a location and filename for the output.
 
 4. (Optional): Update sentiment values in Brandwatch (will also mark updated mentions as "Checked" in BW).
+* Requires 'Query Id' and 'Resource Id' columns in input file
 
 5. (Optional) Select a customization option:
 * Default: Use the default system and user prompts.
@@ -457,7 +462,7 @@ instructions_text = """1. Ensure your input file is a .xlsx and contains a colum
 """
 
 instructions_font = tkFont.nametofont("TkDefaultFont")
-instructions_font.configure(family="Segoe UI", size=12)
+instructions_font.configure(size=12)
 instructions_label = tk.Label(
     instructions_frame, text="Instructions:", font=("Segoe UI", 12)
 )
