@@ -4,6 +4,7 @@ altgraph==0.17.4
 attrs==23.2.0
 certifi==2024.2.2
 charset-normalizer==3.3.2
+darkdetect==0.8.0
 et-xmlfile==1.1.0
 frozenlist==1.4.1
 idna==3.7
@@ -11,7 +12,7 @@ multidict==6.0.5
 numpy==1.26.4
 openpyxl==3.1.2
 packaging==24.0
-pandas==2.2.1
+pandas==2.2.2
 pefile==2023.2.7
 pyinstaller==6.5.0
 pyinstaller-hooks-contrib==2024.3
@@ -27,4 +28,4 @@ tiktoken==0.6.0
 tzdata==2024.1
 urllib3==2.2.1
 yarl==1.9.4
-git+https://github.com/mmstroik/bcr-api-quadrant.git
+git+https://github.com/israel-dryer/ttkbootstrap.git
