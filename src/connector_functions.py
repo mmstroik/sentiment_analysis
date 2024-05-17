@@ -165,6 +165,12 @@ def run_sentiment_analysis_thread(
 
     if logprob_checkbox_var:
         probs_bool = True
+        if "Probs" not in df.columns:
+            df["Probs"] = ""
+        cols = df.columns.tolist()
+        sentiment_index = cols.index('Sentiment')
+        cols = cols[:sentiment_index+1] + ['Probs'] + cols[sentiment_index+1:-1]
+        df = df[cols]
     else:
         probs_bool = False
 
@@ -185,7 +191,7 @@ def run_sentiment_analysis_thread(
         )
     )
     loop.close()
-
+    
     if bw_checkbox_var:
         log_message(f"-------\nUpdating sentiment values in Brandwatch...")
         update_bw_sentiment(df, log_message)
@@ -193,20 +199,14 @@ def run_sentiment_analysis_thread(
     log_message(f"Saving results to excel...")
     df.drop(columns=["Token Count"], inplace=True)
     update_progress_gui(98)
-
-    if logprob_checkbox_var:
-        cols = df.columns.tolist()
-        sentiment_index = cols.index("Sentiment")
-        cols = cols[: sentiment_index + 1] + ["Probs"] + cols[sentiment_index + 1 : -1]
-        df = df[cols]
-
+    
     df.to_excel(output_file, index=False)
     update_progress_gui(100)
     log_message(f"Sentiment analysis results saved to {output_file}.")
     messagebox.showinfo("Success", "Sentiment analysis completed successfully.")
 
     elapsed_time = time.time() - start_time
-    remaining_time = max(60 - elapsed_time, 0)
+    remaining_time = max(55 - elapsed_time, 0)
     if remaining_time > 0:
         log_message(
             f"Waiting {int(remaining_time)} more seconds before enabling the Run button..."
