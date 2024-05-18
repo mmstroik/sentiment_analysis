@@ -471,7 +471,7 @@ instructions_text_area = SimpleMarkdownText(
     instructions_frame,
     wrap=tk.WORD,
     width=50,
-    height=32,
+    height=35,
     font=instructions_font,
 )
 instructions_text_area.pack(fill=BOTH, expand=True)
