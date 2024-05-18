@@ -212,7 +212,7 @@ def run_sentiment_analysis_thread(
             f"Waiting {int(remaining_time)} more seconds before enabling the Run button..."
         )
         time.sleep(remaining_time)
-        log_message("Cooldown complete.")
+        log_message("Cooldown complete, Run button enabled.")
 
     enable_button()
     return
