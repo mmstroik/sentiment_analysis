@@ -229,8 +229,10 @@ input_label.pack()
 input_frame = tk.Frame(main_frame)
 input_frame.pack()
 
-# Reduce the width of the entry and pack it to the right of the frame
-input_entry = tk.Entry(input_frame, width=45, font=("Segoe UI", 11))
+# input var for existing file check function
+input_var = tk.StringVar()
+input_var.trace_add("write", check_file_exists)
+input_entry = tk.Entry(input_frame, textvariable=input_var, width=50, font=("Segoe UI", 11))
 input_entry.pack(side=tk.RIGHT, padx=(0, 10))
 
 # Add a bit of packing in between the button and entry
@@ -263,7 +265,7 @@ output_frame = tk.Frame(sentiment_tab_frame)
 output_frame.pack()
 
 output_entry = tk.Entry(
-    output_frame, textvariable=output_var, width=45, font=("Segoe UI", 11)
+    output_frame, textvariable=output_var, width=50, font=("Segoe UI", 11)
 )
 output_entry.pack(side=tk.RIGHT, padx=(0, 10))
 
@@ -424,7 +426,7 @@ bw_upload_button.pack(pady=(30, 10))
 
 # Placeholder frame for progress bar
 placeholder_frame = tk.Frame(main_frame, height=10, width=450)
-placeholder_frame.pack(pady=(5, 0))
+placeholder_frame.pack(pady=(5, 0), fill=tk.X)
 placeholder_frame.pack_propagate(False)
 
 
