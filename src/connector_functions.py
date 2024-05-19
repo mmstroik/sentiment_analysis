@@ -197,7 +197,7 @@ def run_sentiment_analysis_thread(
     log_message(f"Starting sentiment analysis with {model}...")
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    df, start_time, is_close_to_limit = loop.run_until_complete(
+    df, start_time = loop.run_until_complete(
         process_tweets_in_batches(
             df,
             update_progress_gui,
