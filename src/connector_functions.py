@@ -69,13 +69,20 @@ def setup_sentiment_analysis(
             "Error", "Please provide both input and output file paths."
         )
         return
+    output_file_extension = os.path.splitext(output_file)[1]
+    # TODO: add output csv support (need to pass var to thread)
+    if output_file_extension != '.xlsx':
+        log_message("Output file must be a .xlsx file.") 
+        messagebox.showerror(
+            "Error", "Output file must be a .xlsx file."
+        )
+        return
     if not os.path.exists(input_file):
         log_message(f"Error: The file '{os.path.basename(input_file)}' does not exist.")
         messagebox.showerror(
             "Error",
             f"The file '{os.path.basename(input_file)}' does not exist.",
         )
-        enable_button()
         return
 
     model, batch_token_limit, batch_requests_limit = select_model(gpt_model)
@@ -125,15 +132,25 @@ def run_sentiment_analysis_thread(
 ):
     log_message(f"-------\nReading file: '{os.path.basename(input_file)}'...")
 
-    df = pd.read_excel(input_file, header=None)
+    # Get the file extension
+    _, file_extension = os.path.splitext(input_file)
+
+    # Read the first 20 rows
+    if file_extension == '.xlsx':
+        df = pd.read_excel(input_file, header=None, nrows=20)
+#    elif file_extension == '.csv':
+#        df = pd.read_csv(input_file, header=None, nrows=20, on_bad_lines='skip')
+    else:
+        log_message("Error: Unsupported file type.")
+        messagebox.showerror("Error", "Unsupported file type.")
+        enable_button()
+        return
 
     # Find 'Full Text' column
     full_text_row = (
-        df.iloc[:20]
-        .apply(lambda row: row.astype(str).str.contains("Full Text").any(), axis=1)
+        df.apply(lambda row: row.astype(str).str.contains("Full Text").any(), axis=1)
         .idxmax()
     )
-
     if full_text_row is None:
         log_message(
             "Error: The input file does not contain the required column 'Full Text'."
@@ -145,14 +162,17 @@ def run_sentiment_analysis_thread(
         enable_button()
         return
 
-    # Drop the rows above the 'Full Text' row and set the 'Full Text' row as the header
-    df.columns = df.iloc[full_text_row]
-    df = df.iloc[(full_text_row + 1) :].reset_index(drop=True)
-
-    log_message("'Full Text' column found.")
-
+    log_message("'Full Text' column found. Processing the full file...")
+    # read the full file, skipping rows above the column names
+    if file_extension == '.xlsx':
+        df = pd.read_excel(input_file, header=full_text_row)
+#    elif file_extension == '.csv':
+#        df = pd.read_csv(input_file, header=None, on_bad_lines='skip')
     if bw_checkbox_var:
         if "Query Id" not in df.columns or "Resource Id" not in df.columns:
+            log_message(
+                "The input file does not contain the required BW columns 'Query Id' or 'Resource Id'."
+            )
             messagebox.showerror(
                 "Error",
                 "The input file does not contain the required BW columns 'Query Id' or 'Resource Id'.",
@@ -177,7 +197,7 @@ def run_sentiment_analysis_thread(
     log_message(f"Starting sentiment analysis with {model}...")
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    df, start_time = loop.run_until_complete(
+    df, start_time, is_close_to_limit = loop.run_until_complete(
         process_tweets_in_batches(
             df,
             update_progress_gui,
