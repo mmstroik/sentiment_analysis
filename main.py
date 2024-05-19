@@ -425,8 +425,8 @@ bw_upload_button.pack(pady=(30, 10))
 
 
 # Placeholder frame for progress bar
-placeholder_frame = tk.Frame(main_frame, height=10, width=450)
-placeholder_frame.pack(pady=(5, 0), fill=tk.X)
+placeholder_frame = tk.Frame(main_frame, height=11, width=450)
+placeholder_frame.pack(pady=(5, 0), padx=(5, 5), fill=tk.X)
 placeholder_frame.pack_propagate(False)
 
 
