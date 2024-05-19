@@ -249,7 +249,6 @@ def calculate_token_count(df, system_prompt, user_prompt, log_callback):
     )
 
 def calculate_batch_size(df, batch_token_limit, batch_requests_limit, start_idx):
-
     batch_token_count = 0
     batch_end_idx = start_idx
     while (
@@ -262,3 +261,4 @@ def calculate_batch_size(df, batch_token_limit, batch_requests_limit, start_idx)
         else:
             break
     return batch_end_idx
+
