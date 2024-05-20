@@ -410,7 +410,7 @@ sentiment_run_button = ttk.Button(
     style="run.TButton",
     command=start_sentiment_analysis,
 )
-sentiment_run_button.pack(pady=(30, 10))
+sentiment_run_button.pack(pady=(30, 12), side="bottom")
 
 
 # BW upload button
@@ -421,7 +421,7 @@ bw_upload_button = ttk.Button(
     style="run.TButton",
     command=start_bw_upload,
 )
-bw_upload_button.pack(pady=(30, 10))
+bw_upload_button.pack(pady=(30, 12))
 
 
 # Placeholder frame for progress bar
@@ -473,7 +473,7 @@ instructions_text_area = SimpleMarkdownText(
     instructions_frame,
     wrap=tk.WORD,
     width=50,
-    height=35,
+    height=34,
     font=instructions_font,
 )
 instructions_text_area.pack(fill=BOTH, expand=True)
