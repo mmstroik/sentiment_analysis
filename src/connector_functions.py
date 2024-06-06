@@ -226,7 +226,7 @@ def run_sentiment_analysis_thread(
     messagebox.showinfo("Success", "Sentiment analysis completed successfully.")
 
     elapsed_time = time.time() - start_time
-    remaining_time = max(55 - elapsed_time, 0)
+    remaining_time = max(45 - elapsed_time, 0)
     if remaining_time > 0:
         log_message(
             f"Waiting {int(remaining_time)} more seconds before enabling the Run button..."
