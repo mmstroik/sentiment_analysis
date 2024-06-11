@@ -244,6 +244,13 @@ def calculate_token_count(df, system_prompt, user_prompt, log_callback):
     log_callback("Calculating token counts for each mention...")
     full_user_prompt = f'{user_prompt} ""\nSentiment:'
     prompt_token_count = len(ENCODING.encode(system_prompt + full_user_prompt))
+    
+    # Find rows where 'Full Text' is not a string or is empty
+    invalid_rows = df[~df['Full Text'].apply(lambda x: isinstance(x, str) and x.strip() != '')].index
+    
+    # Drop these rows from the DataFrame
+    df.drop(invalid_rows, inplace=True)
+    
     df["Token Count"] = df["Full Text"].apply(
         lambda tweet: len(ENCODING.encode(tweet)) + prompt_token_count + 1
     )
