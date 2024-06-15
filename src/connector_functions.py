@@ -145,24 +145,25 @@ def run_sentiment_analysis_thread(
         messagebox.showerror("Error", "Unsupported file type.")
         enable_button()
         return
-
-    # Find 'Full Text' column
-    full_text_row = (
-        df.apply(lambda row: row.astype(str).str.contains("Full Text").any(), axis=1)
-        .idxmax()
-    )
-    if full_text_row is None:
+    
+    # Check for 'Full Text' or 'Content' in first 20 rows
+    if df.head(20).apply(lambda row: row.astype(str) == "Full Text", axis=1).any():
+        full_text_row = df.head(20).apply(lambda row: row.astype(str) == "Full Text", axis=1).idxmax()
+        log_message("'Full Text' column found. Processing the full file...")
+    elif df.head(20).apply(lambda row: row.astype(str) == "Content", axis=1).any():
+        full_text_row = df.head(20).apply(lambda row: row.astype(str) == "Content", axis=1).idxmax()
+        log_message("'Content' column found. Processing the full file...")
+    else:
         log_message(
-            "Error: The input file does not contain the required column 'Full Text'."
+            "Error: The input file does not contain the required column 'Full Text' or 'Content'."
         )
         messagebox.showerror(
             "Error",
-            "The input file does not contain the required column 'Full Text'.",
+            "The input file does not contain the required column 'Full Text' or 'Content'.",
         )
         enable_button()
         return
 
-    log_message("'Full Text' column found. Processing the full file...")
     # read the full file, skipping rows above the column names
     if file_extension == '.xlsx':
         df = pd.read_excel(input_file, header=full_text_row)
