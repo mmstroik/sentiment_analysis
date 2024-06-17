@@ -147,11 +147,11 @@ def run_sentiment_analysis_thread(
         return
     
     # Check for 'Full Text' or 'Content' in first 20 rows
-    if df.head(20).apply(lambda row: row.astype(str) == "Full Text", axis=1).any():
-        full_text_row = df.head(20).apply(lambda row: row.astype(str) == "Full Text", axis=1).idxmax()
+    if 'Full Text' in df.iloc[:20].values:
+        full_text_row = df.iloc[:20].isin(['Full Text']).any(axis=1).idxmax()
         log_message("'Full Text' column found. Processing the full file...")
-    elif df.head(20).apply(lambda row: row.astype(str) == "Content", axis=1).any():
-        full_text_row = df.head(20).apply(lambda row: row.astype(str) == "Content", axis=1).idxmax()
+    elif 'Content' in df.iloc[:20].values:
+        full_text_row = df.iloc[:20].isin(['Content']).any(axis=1).idxmax()
         log_message("'Content' column found. Processing the full file...")
     else:
         log_message(
