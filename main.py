@@ -443,7 +443,7 @@ log_text_area = scrolledtext.ScrolledText(
 log_text_area.configure(state="disabled")
 log_text_area.pack(pady=(2, 0))
 
-instructions_text = """1. Ensure your input file is a .xlsx and contains a column named "Full Text".
+instructions_text = """1. Ensure your input file is a .xlsx and contains a column named "Full Text" or "Content" (default for BW and quorum).
 * Note: Works with column headers in any of the first 20 rows (BW exports).
 
 2. Click on the "Browse" button under "Input File" and select the file containing the mentions/tweets.
