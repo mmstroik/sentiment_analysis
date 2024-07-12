@@ -175,6 +175,10 @@ def run_sentiment_analysis_thread(
         df = pd.read_excel(input_file, header=full_text_row)
 #    elif file_extension == '.csv':
 #        df = pd.read_csv(input_file, header=None, on_bad_lines='skip')
+
+    if 'Content' in df.columns and 'Full Text' not in df.columns:
+        df.rename(columns={'Content': 'Full Text'}, inplace=True)
+    
     if bw_checkbox_var:
         if "Query Id" not in df.columns or "Resource Id" not in df.columns:
             log_message(
