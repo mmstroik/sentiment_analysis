@@ -34,19 +34,22 @@ def select_model(gpt_model):
 
 # Set the system and user prompts based on the customization option selected
 def set_prompts(
-    customization_option, company_entry, system_prompt_entry, user_prompt_entry
+    customization_option, company_entry, system_prompt_entry, user_prompt_entry, user_prompt_entry2
 ):
     if customization_option == "Default":
         system_prompt = "Classify the sentiment of the following Text in one word from this list [Positive, Neutral, Negative]."
         user_prompt = "Text:"
+        user_prompt2 = "Sentiment:"
     elif customization_option == "Company":
         company = company_entry
         system_prompt = f"Classify the sentiment of the following Text toward {company} in one word from this list [Positive, Neutral, Negative]."
         user_prompt = "Text:"
+        user_prompt2 = "Sentiment:"
     elif customization_option == "Custom":
         system_prompt = system_prompt_entry.strip()
-        user_prompt = user_prompt_entry
-    return system_prompt, user_prompt
+        user_prompt = user_prompt_entry.strip()
+        user_prompt2 = user_prompt_entry2.strip()
+    return system_prompt, user_prompt, user_prompt2
 
 
 def setup_sentiment_analysis(
@@ -60,6 +63,7 @@ def setup_sentiment_analysis(
     company_entry,
     system_prompt_entry,
     user_prompt_entry,
+    user_prompt_entry2,
     gpt_model,
     bw_checkbox_var,
     logprob_checkbox_var,
@@ -86,8 +90,8 @@ def setup_sentiment_analysis(
         return
 
     model, batch_token_limit, batch_requests_limit = select_model(gpt_model)
-    system_prompt, user_prompt = set_prompts(
-        customization_option, company_entry, system_prompt_entry, user_prompt_entry
+    system_prompt, user_prompt, user_prompt2 = set_prompts(
+        customization_option, company_entry, system_prompt_entry, user_prompt_entry, user_prompt_entry2
     )
 
     disable_button()
@@ -102,6 +106,7 @@ def setup_sentiment_analysis(
                 enable_button,
                 system_prompt,
                 user_prompt,
+                user_prompt2,
                 model,
                 batch_token_limit,
                 batch_requests_limit,
@@ -124,6 +129,7 @@ def run_sentiment_analysis_thread(
     enable_button,
     system_prompt,
     user_prompt,
+    user_prompt2,
     model,
     batch_token_limit,
     batch_requests_limit,
@@ -205,6 +211,7 @@ def run_sentiment_analysis_thread(
             log_message,
             system_prompt,
             user_prompt,
+            user_prompt2,
             model,
             probs_bool,
             batch_token_limit,

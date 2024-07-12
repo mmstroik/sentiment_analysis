@@ -34,6 +34,7 @@ def start_sentiment_analysis():
         company_entry=company_entry.get(),
         system_prompt_entry=system_prompt_entry.get("1.0", tk.END),
         user_prompt_entry=user_prompt_entry.get(),
+        user_prompt_entry2=user_prompt_entry2.get(),
         gpt_model=gpt_model_var.get(),
         bw_checkbox_var=bw_checkbox_var.get(),
         logprob_checkbox_var=logprob_checkbox_var.get(),
@@ -373,13 +374,16 @@ user_prompt_label.pack(side=tk.LEFT, padx=(5, 0))
 
 user_prompt_entry_frame = tk.Frame(sentiment_tab_frame)
 
-user_prompt_entry = tk.Entry(user_prompt_entry_frame, width=7, font=("Segoe UI", 11))
+user_prompt_entry = tk.Entry(user_prompt_entry_frame, width=6, font=("Segoe UI", 11))
 user_prompt_entry.insert(tk.END, "Text:")
 user_prompt_entry.pack(side=tk.LEFT)
 user_prompt_tweet_label = tk.Label(
-    user_prompt_entry_frame, text=' "{Sample Text}"  Sentiment:', font=("Segoe UI", 11)
+    user_prompt_entry_frame, text=' "{Sample Text}"', font=("Segoe UI", 11)
 )
-user_prompt_tweet_label.pack(side=tk.LEFT, padx=(5, 0))
+user_prompt_tweet_label.pack(side=tk.LEFT, padx=(5, 5))
+user_prompt_entry2 = tk.Entry(user_prompt_entry_frame, width=10, font=("Segoe UI", 11))
+user_prompt_entry2.insert(tk.END, "Sentiment:")
+user_prompt_entry2.pack(side=tk.LEFT)
 
 # GPT Model Selection
 gpt_model_label = tk.Label(
