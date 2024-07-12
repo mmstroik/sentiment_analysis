@@ -21,12 +21,13 @@ async def process_tweets_in_batches(
     log_callback,
     system_prompt,
     user_prompt,
+    user_prompt2,
     model,
     probs_bool,
     batch_token_limit,
     batch_requests_limit,
 ):
-    calculate_token_count(df, system_prompt, user_prompt, log_callback)
+    calculate_token_count(df, system_prompt, user_prompt, user_prompt2, log_callback)
     total = len(df)
     processed = 0
     async with ClientSession() as session:
@@ -39,6 +40,7 @@ async def process_tweets_in_batches(
             log_callback,
             system_prompt,
             user_prompt,
+            user_prompt2,
             model,
             probs_bool,
             batch_token_limit,
@@ -58,6 +60,7 @@ async def process_tweets_in_batches(
                 log_callback,
                 system_prompt,
                 user_prompt,
+                user_prompt2,
                 model,
                 probs_bool,
                 batch_token_limit,
@@ -74,6 +77,7 @@ async def main_batch_processing_loop(
     log_callback,
     system_prompt,
     user_prompt,
+    user_prompt2,
     model,
     probs_bool,
     batch_token_limit,
@@ -94,7 +98,7 @@ async def main_batch_processing_loop(
         # Set batch index and send requests
         batch = df.iloc[start_idx:batch_end_idx]
         tasks = [
-            call_openai_async(session, tweet, system_prompt, user_prompt, model, probs_bool)
+            call_openai_async(session, tweet, system_prompt, user_prompt, user_prompt2, model, probs_bool)
             for tweet in batch["Full Text"]
         ]
         
@@ -136,6 +140,7 @@ async def reprocess_errors(
     log_callback,
     system_prompt,
     user_prompt,
+    user_prompt2,
     model,
     probs_bool,
     batch_token_limit,
@@ -160,7 +165,7 @@ async def reprocess_errors(
         # Reprocess the batch of errored tweets
         batch = errored_df.iloc[start_idx:batch_end_idx]
         tasks = [
-            call_openai_async(session, tweet, system_prompt, user_prompt, model, probs_bool)
+            call_openai_async(session, tweet, system_prompt, user_prompt, user_prompt2, model, probs_bool)
             for tweet in batch["Full Text"]
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -199,6 +204,7 @@ async def call_openai_async(
     tweet: str,
     system_prompt: str,
     user_prompt: str,
+    user_prompt2: str,
     model: str,
     probs_bool: bool = False,
     max_retries=6,
@@ -207,10 +213,10 @@ async def call_openai_async(
         "model": model,
         "messages": [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f'{user_prompt} "{tweet}"\nSentiment:'},
+            {"role": "user", "content": f'{user_prompt} "{tweet}"\n{user_prompt2}'},
         ],
         "temperature": 0,
-        "max_tokens": 1,
+        "max_tokens": 5,
         "logprobs": probs_bool,
     }
     headers = {
@@ -240,9 +246,9 @@ async def call_openai_async(
                 return "Error"
 
 
-def calculate_token_count(df, system_prompt, user_prompt, log_callback):
+def calculate_token_count(df, system_prompt, user_prompt, user_prompt2, log_callback):
     log_callback("Calculating token counts for each mention...")
-    full_user_prompt = f'{user_prompt} ""\nSentiment:'
+    full_user_prompt = f'{user_prompt} ""\n{user_prompt2}'
     prompt_token_count = len(ENCODING.encode(system_prompt + full_user_prompt))
     
     # Find rows where 'Full Text' is not a string or is empty
