@@ -226,24 +226,29 @@ async def call_openai_async(
 
     retry_delay = 1
     for attempt in range(max_retries):
-        async with session.post(
-            "https://api.openai.com/v1/chat/completions", json=payload, headers=headers
-        ) as response:
-            if response.status == 200:
-                result = await response.json()
-                sentiment = result["choices"][0]["message"]["content"]
-                if probs_bool:
-                    logprob = result["choices"][0]["logprobs"]["content"][0]["logprob"]
-                    return sentiment.strip(), logprob
+        try:
+            async with session.post(
+                "https://api.openai.com/v1/chat/completions", json=payload, headers=headers
+            ) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    sentiment = result["choices"][0]["message"]["content"]
+                    if probs_bool:
+                        logprob = result["choices"][0]["logprobs"]["content"][0]["logprob"]
+                        return sentiment.strip(), logprob
+                    else:
+                        return sentiment.strip()
+                elif attempt < max_retries - 1:
+                    await asyncio.sleep(retry_delay)  # Wait before retrying
+                    retry_delay += 2
                 else:
-                    return sentiment.strip()
-            elif attempt < max_retries - 1:
-                await asyncio.sleep(retry_delay)  # Wait before retrying
-                retry_delay += 2
-            else:
-                result = await response.text()
-                # todo
-                return "Error"
+                    result = await response.text()
+                    print(result)
+                    return "Error"
+        except Exception as e:
+            print(e)
+            return "Error"
+            
 
 
 def calculate_token_count(df, system_prompt, user_prompt, user_prompt2, log_callback):
@@ -258,7 +263,7 @@ def calculate_token_count(df, system_prompt, user_prompt, user_prompt2, log_call
     df.drop(invalid_rows, inplace=True)
     
     df["Token Count"] = df["Full Text"].apply(
-        lambda tweet: len(ENCODING.encode(tweet)) + prompt_token_count + 1
+        lambda tweet: len(ENCODING.encode(tweet)) + prompt_token_count + 2
     )
 
 def calculate_batch_size(df, batch_token_limit, batch_requests_limit, start_idx):
