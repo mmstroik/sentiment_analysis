@@ -27,8 +27,9 @@ async def process_tweets_in_batches(
     probs_bool,
     batch_token_limit,
     batch_requests_limit,
+    customization_option,
 ):
-    calculate_token_count(df, system_prompt, user_prompt, user_prompt2, log_callback)
+    calculate_token_count(df, system_prompt, user_prompt, user_prompt2, log_callback, customization_option)
     total = len(df)
     processed = 0
     async with ClientSession() as session:
@@ -50,6 +51,7 @@ async def process_tweets_in_batches(
             processed,
             session,
             start_idx,
+            customization_option
         )
         
         # Reprocess errored tweets
@@ -67,6 +69,7 @@ async def process_tweets_in_batches(
                 batch_token_limit,
                 batch_requests_limit,
                 session,
+                customization_option,
                 errored_df,
             )
     return df, start_time
@@ -87,6 +90,7 @@ async def main_batch_processing_loop(
     processed,
     session,
     start_idx,
+    customization_option,
 ):
     while start_idx < len(df):
         log_callback("Calculating size of next batch...")
@@ -98,10 +102,16 @@ async def main_batch_processing_loop(
         )
         # Set batch index and send requests
         batch = df.iloc[start_idx:batch_end_idx]
-        tasks = [
-            call_openai_async(session, tweet, system_prompt, user_prompt, user_prompt2, model, probs_bool)
-            for tweet in batch["Full Text"]
-        ]
+        if customization_option == "Multi-Company":
+            tasks = [
+                call_openai_async(session, tweet, company, system_prompt, user_prompt, user_prompt2, model, probs_bool, customization_option)
+                for tweet, company in zip(batch["Full Text"], batch["AnalyzedCompany"])
+            ]
+        else:
+            tasks = [
+                call_openai_async(session, tweet, system_prompt, user_prompt, user_prompt2, model, probs_bool, customization_option)
+                for tweet in batch["Full Text"]
+            ]
         
         results = await asyncio.gather(*tasks, return_exceptions=True)
         timer = asyncio.create_task(asyncio.sleep(RATE_LIMIT_DELAY))
@@ -147,6 +157,7 @@ async def reprocess_errors(
     batch_token_limit,
     batch_requests_limit,
     session,
+    customization_option,
     errored_df,
 ):
     log_callback(
@@ -165,10 +176,17 @@ async def reprocess_errors(
 
         # Reprocess the batch of errored tweets
         batch = errored_df.iloc[start_idx:batch_end_idx]
-        tasks = [
-            call_openai_async(session, tweet, system_prompt, user_prompt, user_prompt2, model, probs_bool)
-            for tweet in batch["Full Text"]
-        ]
+        if customization_option == "Multi-Company":
+            tasks = [
+                call_openai_async(session, tweet, company, system_prompt, user_prompt, user_prompt2, model, probs_bool, customization_option)
+                for tweet, company in zip(batch["Full Text"], batch["AnalyzedCompany"])
+            ]
+        else:
+            tasks = [
+                call_openai_async(session, tweet, system_prompt, user_prompt, user_prompt2, model, probs_bool, customization_option)
+                for tweet in batch["Full Text"]
+            ]
+            
         results = await asyncio.gather(*tasks, return_exceptions=True)
         start_time = time.time()
 
@@ -203,13 +221,20 @@ async def reprocess_errors(
 async def call_openai_async(
     session: ClientSession,
     tweet: str,
+    company: str,
     system_prompt: str,
     user_prompt: str,
     user_prompt2: str,
     model: str,
     probs_bool: bool = False,
+    customization_option: str = "Default",
     max_retries=6,
 ):
+
+    if customization_option == "Multi-Company":
+        toward_company = f" toward {company}" if company else ""
+        system_prompt = system_prompt.format(toward_company=toward_company)
+
     payload = {
         "model": model,
         "messages": [
@@ -252,10 +277,16 @@ async def call_openai_async(
             
 
 
-def calculate_token_count(df, system_prompt, user_prompt, user_prompt2, log_callback):
+def calculate_token_count(df, system_prompt, user_prompt, user_prompt2, log_callback, customization_option):
     log_callback("Calculating token counts for each mention...")
     full_user_prompt = f'{user_prompt} ""\n{user_prompt2}'
-    prompt_token_count = len(ENCODING.encode(system_prompt + full_user_prompt))
+
+    if customization_option == "Multi-Company":
+        # Calculate token count for the longest possible prompt (with " toward Company")
+        max_company_length = df['AnalyzedCompany'].str.len().max()
+        prompt_token_count = len(ENCODING.encode(system_prompt.format(toward_company=f" toward {'A' * max_company_length}") + full_user_prompt))
+    else:
+        prompt_token_count = len(ENCODING.encode(system_prompt + full_user_prompt))
     
     # Find rows where 'Full Text' is not a string or is empty
     invalid_rows = df[~df['Full Text'].apply(lambda x: isinstance(x, str) and x.strip() != '')].index

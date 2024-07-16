@@ -34,7 +34,11 @@ def select_model(gpt_model):
 
 # Set the system and user prompts based on the customization option selected
 def set_prompts(
-    customization_option, company_entry, system_prompt_entry, user_prompt_entry, user_prompt_entry2
+    customization_option,
+    company_entry,
+    system_prompt_entry,
+    user_prompt_entry,
+    user_prompt_entry2,
 ):
     if customization_option == "Default":
         system_prompt = "Classify the sentiment of the following Text in one word from this list [Positive, Neutral, Negative]."
@@ -43,6 +47,10 @@ def set_prompts(
     elif customization_option == "Company":
         company = company_entry
         system_prompt = f"Classify the sentiment of the following Text toward {company} in one word from this list [Positive, Neutral, Negative]."
+        user_prompt = "Text:"
+        user_prompt2 = "Sentiment:"
+    elif customization_option == "Multi-Company":
+        system_prompt = "Classify the sentiment of the following Text toward {company} in one word from this list [Positive, Neutral, Negative]."
         user_prompt = "Text:"
         user_prompt2 = "Sentiment:"
     elif customization_option == "Custom":
@@ -67,6 +75,8 @@ def setup_sentiment_analysis(
     gpt_model,
     bw_checkbox_var,
     logprob_checkbox_var,
+    company_column=None,
+    multi_company_entry=None,
 ):
     if not input_file or not output_file:
         messagebox.showerror(
@@ -74,12 +84,10 @@ def setup_sentiment_analysis(
         )
         return
     output_file_extension = os.path.splitext(output_file)[1]
-    # TODO: add output csv support (need to pass var to thread)
-    if output_file_extension != '.xlsx':
-        log_message("Output file must be a .xlsx file.") 
-        messagebox.showerror(
-            "Error", "Output file must be a .xlsx file."
-        )
+
+    if output_file_extension != ".xlsx":
+        log_message("Output file must be a .xlsx file.")
+        messagebox.showerror("Error", "Output file must be a .xlsx file.")
         return
     if not os.path.exists(input_file):
         log_message(f"Error: The file '{os.path.basename(input_file)}' does not exist.")
@@ -91,7 +99,11 @@ def setup_sentiment_analysis(
 
     model, batch_token_limit, batch_requests_limit = select_model(gpt_model)
     system_prompt, user_prompt, user_prompt2 = set_prompts(
-        customization_option, company_entry, system_prompt_entry, user_prompt_entry, user_prompt_entry2
+        customization_option,
+        company_entry,
+        system_prompt_entry,
+        user_prompt_entry,
+        user_prompt_entry2,
     )
 
     disable_button()
@@ -112,6 +124,9 @@ def setup_sentiment_analysis(
                 batch_requests_limit,
                 bw_checkbox_var,
                 logprob_checkbox_var,
+                customization_option,
+                company_column,
+                multi_company_entry,
             ),
         )
         thread.start()
@@ -135,6 +150,9 @@ def run_sentiment_analysis_thread(
     batch_requests_limit,
     bw_checkbox_var,
     logprob_checkbox_var,
+    customization_option,
+    company_column,
+    multi_company_entry,
 ):
     log_message(f"-------\nReading file: '{os.path.basename(input_file)}'...")
 
@@ -142,22 +160,14 @@ def run_sentiment_analysis_thread(
     _, file_extension = os.path.splitext(input_file)
 
     # Read the first 20 rows
-    if file_extension == '.xlsx':
-        df = pd.read_excel(input_file, header=None, nrows=20)
-#    elif file_extension == '.csv':
-#        df = pd.read_csv(input_file, header=None, nrows=20, on_bad_lines='skip')
-    else:
-        log_message("Error: Unsupported file type.")
-        messagebox.showerror("Error", "Unsupported file type.")
-        enable_button()
-        return
-    
+    df = pd.read_excel(input_file, header=None, nrows=20)
+
     # Check for 'Full Text' or 'Content' in first 20 rows
-    if 'Full Text' in df.iloc[:20].values:
-        full_text_row = df.iloc[:20].isin(['Full Text']).any(axis=1).idxmax()
+    if "Full Text" in df.iloc[:20].values:
+        full_text_row = df.iloc[:20].isin(["Full Text"]).any(axis=1).idxmax()
         log_message("'Full Text' column found. Processing the full file...")
-    elif 'Content' in df.iloc[:20].values:
-        full_text_row = df.iloc[:20].isin(['Content']).any(axis=1).idxmax()
+    elif "Content" in df.iloc[:20].values:
+        full_text_row = df.iloc[:20].isin(["Content"]).any(axis=1).idxmax()
         log_message("'Content' column found. Processing the full file...")
     else:
         log_message(
@@ -171,14 +181,11 @@ def run_sentiment_analysis_thread(
         return
 
     # read the full file, skipping rows above the column names
-    if file_extension == '.xlsx':
-        df = pd.read_excel(input_file, header=full_text_row)
-#    elif file_extension == '.csv':
-#        df = pd.read_csv(input_file, header=None, on_bad_lines='skip')
+    df = pd.read_excel(input_file, header=full_text_row)
 
-    if 'Content' in df.columns and 'Full Text' not in df.columns:
-        df.rename(columns={'Content': 'Full Text'}, inplace=True)
-    
+    if "Content" in df.columns and "Full Text" not in df.columns:
+        df.rename(columns={"Content": "Full Text"}, inplace=True)
+
     if bw_checkbox_var:
         if "Query Id" not in df.columns or "Resource Id" not in df.columns:
             log_message(
@@ -199,11 +206,45 @@ def run_sentiment_analysis_thread(
         if "Probs" not in df.columns:
             df["Probs"] = ""
         cols = df.columns.tolist()
-        sentiment_index = cols.index('Sentiment')
-        cols = cols[:sentiment_index+1] + ['Probs'] + cols[sentiment_index+1:-1]
+        sentiment_index = cols.index("Sentiment")
+        cols = cols[: sentiment_index + 1] + ["Probs"] + cols[sentiment_index + 1 : -1]
         df = df[cols]
     else:
         probs_bool = False
+
+    if customization_option == "Multi-Company":
+        if not multi_company_entry:
+            log_message(
+                "Error: No companies were specified for multi-company analysis."
+            )
+            messagebox.showerror(
+                "Error", "No companies were specified for multi-company analysis."
+            )
+            enable_button()
+            return
+        if not company_column:
+            log_message("Error: No company column was specified for multi-company analysis.")
+            messagebox.showerror(
+                "Error", "No company column was specified for multi-company analysis."
+            )
+            enable_button()
+            return
+        if company_column not in df.columns:
+            log_message(
+                f"Error: The specified company column name '{company_column}' does not exist in the input file."
+            )
+            messagebox.showerror(
+                "Error",
+                f"The specified company column name '{company_column}' does not exist in the input file.",
+            )
+            enable_button()
+            return
+
+        df = process_multi_company(df, company_column, multi_company_entry, log_message)
+        if df is None:  # User chose not to proceed
+            log_message("Analysis cancelled by user.")
+            enable_button()
+            return
 
     log_message(f"Starting sentiment analysis with {model}...")
     loop = asyncio.new_event_loop()
@@ -223,7 +264,7 @@ def run_sentiment_analysis_thread(
         )
     )
     loop.close()
-    
+
     if bw_checkbox_var:
         log_message(f"-------\nUpdating sentiment values in Brandwatch...")
         update_bw_sentiment(df, log_message)
@@ -231,7 +272,7 @@ def run_sentiment_analysis_thread(
     log_message(f"Saving results to excel...")
     df.drop(columns=["Token Count"], inplace=True)
     update_progress_gui(98)
-    
+
     df.to_excel(output_file, index=False)
     update_progress_gui(100)
     log_message(f"Sentiment analysis results saved to {output_file}.")
@@ -248,6 +289,55 @@ def run_sentiment_analysis_thread(
 
     enable_button()
     return
+
+
+def process_multi_company(df, company_column, multi_company_entry, log_message):
+    log_message("Creating multi-company designations based on specified order...")
+
+    company_list = [
+        company.strip() for company in multi_company_entry.split(",") if company.strip()
+    ]
+
+    # Check if all priority companies are present in the dataset
+    companies_in_data = set()
+    for companies in df[company_column].dropna():
+        companies_in_data.update(company.strip() for company in companies.split(','))
+    
+    missing_companies = [company for company in company_list if company not in companies_in_data]
+    
+    if missing_companies:
+        missing_companies_str = ', '.join(missing_companies)
+        message = f"The following companies from your priority list were not found in the dataset:\n\n{missing_companies_str}\n\nDo you want to proceed anyway?"
+        proceed = messagebox.askyesno("Companies Not Found", message)
+        if not proceed:
+            return None
+
+    df["AnalyzedCompany"] = ""
+
+    total_analyzed = 0
+    for priority_company in company_list:
+        mask = (df["AnalyzedCompany"] == "") & (
+            df[company_column].apply(
+                lambda x: (
+                    priority_company in {company.strip() for company in x.split(",")}
+                    if pd.notna(x)
+                    else False
+                )
+            )
+        )
+        company_count = mask.sum()
+        df.loc[mask, "AnalyzedCompany"] = priority_company
+        total_analyzed += company_count
+        log_message(
+            f"{company_count} mentions will be analyzed towards {priority_company}"
+        )
+
+    unanalyzed_count = len(df) - total_analyzed
+    log_message(
+        f"{unanalyzed_count} mentions will be analyzed without a specific company focus."
+    )
+
+    return df
 
 
 """BRANDWATCH UPLOAD-ONLY CONNECTOR FUNCTIONS"""
@@ -319,7 +409,7 @@ def setup_bw_upload(
     if "Sentiment" not in df.columns:
         messagebox.showerror(
             "Error",
-            "The input file does not contain the required BW columns 'Query Id' or 'Resource Id'.",
+            "The input file does not contain a Sentiment column.",
         )
         enable_button()
         return
