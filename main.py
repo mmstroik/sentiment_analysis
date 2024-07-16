@@ -353,7 +353,7 @@ multi_company_frame = tk.Frame(sentiment_tab_frame)
 company_column_label = tk.Label(
     multi_company_frame, text="Company column (BW parent category):", font=("Segoe UI", 12)
 )
-company_column = tk.Entry(multi_company_frame, width=16, font=("Segoe UI", 11))
+company_column = tk.Entry(multi_company_frame, width=20, font=("Segoe UI", 11))
 
 multi_company_label = tk.Label(
     multi_company_frame, text="List BW companies, seperated by commas, in order of priority:", font=("Segoe UI", 12)

@@ -50,7 +50,8 @@ def set_prompts(
         user_prompt = "Text:"
         user_prompt2 = "Sentiment:"
     elif customization_option == "Multi-Company":
-        system_prompt = "Classify the sentiment of the following Text toward {company} in one word from this list [Positive, Neutral, Negative]."
+        # Placeholder for company name (uses .format to replace bracketed text)
+        system_prompt = "Classify the sentiment of the following Text{toward_company} in one word from this list [Positive, Neutral, Negative]."
         user_prompt = "Text:"
         user_prompt2 = "Sentiment:"
     elif customization_option == "Custom":
@@ -261,6 +262,7 @@ def run_sentiment_analysis_thread(
             probs_bool,
             batch_token_limit,
             batch_requests_limit,
+            customization_option,
         )
     )
     loop.close()

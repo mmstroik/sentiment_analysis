@@ -273,8 +273,7 @@ async def call_openai_async(
                     return "Error"
         except Exception as e:
             print(e)
-            return "Error"
-            
+            return "Error"       
 
 
 def calculate_token_count(df, system_prompt, user_prompt, user_prompt2, log_callback, customization_option):
@@ -283,8 +282,8 @@ def calculate_token_count(df, system_prompt, user_prompt, user_prompt2, log_call
 
     if customization_option == "Multi-Company":
         # Calculate token count for the longest possible prompt (with " toward Company")
-        max_company_length = df['AnalyzedCompany'].str.len().max()
-        prompt_token_count = len(ENCODING.encode(system_prompt.format(toward_company=f" toward {'A' * max_company_length}") + full_user_prompt))
+        longest_company_name = df['AnalyzedCompany'].max()
+        prompt_token_count = len(ENCODING.encode(system_prompt.format(toward_company=f" toward {longest_company_name}") + full_user_prompt))
     else:
         prompt_token_count = len(ENCODING.encode(system_prompt + full_user_prompt))
     
