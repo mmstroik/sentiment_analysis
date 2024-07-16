@@ -38,6 +38,8 @@ def start_sentiment_analysis():
         gpt_model=gpt_model_var.get(),
         bw_checkbox_var=bw_checkbox_var.get(),
         logprob_checkbox_var=logprob_checkbox_var.get(),
+        company_column=company_column.get(),
+        multi_company_entry=multi_company_entry.get("1.0", tk.END),
     )
 
 
@@ -159,6 +161,7 @@ def on_customization_selected(*args):
     if selected_option == "Default":
         company_label.pack_forget()
         company_entry.pack_forget()
+        multi_company_frame.pack_forget()
         system_prompt_frame.pack_forget()
         system_prompt_entry.pack_forget()
         user_prompt_frame.pack_forget()
@@ -166,6 +169,15 @@ def on_customization_selected(*args):
     elif selected_option == "Company":
         company_label.pack(before=gpt_model_label, pady=(15, 0))
         company_entry.pack(before=gpt_model_label)
+        multi_company_frame.pack_forget()
+        system_prompt_frame.pack_forget()
+        system_prompt_entry.pack_forget()
+        user_prompt_frame.pack_forget()
+        user_prompt_entry_frame.pack_forget()
+    elif selected_option == "Multi-Company":
+        company_label.pack_forget()
+        company_entry.pack_forget()
+        multi_company_frame.pack(before=gpt_model_label, pady=(15, 0))
         system_prompt_frame.pack_forget()
         system_prompt_entry.pack_forget()
         user_prompt_frame.pack_forget()
@@ -173,6 +185,7 @@ def on_customization_selected(*args):
     elif selected_option == "Custom":
         company_label.pack_forget()
         company_entry.pack_forget()
+        multi_company_frame.pack_forget()
         system_prompt_frame.pack(before=gpt_model_label, pady=(18, 0))
         system_prompt_entry.pack(before=gpt_model_label, pady=(0, 0))
         user_prompt_frame.pack(before=gpt_model_label, pady=(5, 0))
@@ -316,7 +329,7 @@ customization_label.pack(pady=(15, 0))
 customization_var = tk.StringVar(value="Default")
 prompt_radio_frame = tk.Frame(sentiment_tab_frame)
 prompt_radio_frame.pack()
-prompt_options = ["Default", "Company", "Custom"]
+prompt_options = ["Default", "Company", "Multi-Company", "Custom"]
 for option in prompt_options:
     prompt_radio_button = ttk.Radiobutton(
         prompt_radio_frame,
@@ -325,7 +338,6 @@ for option in prompt_options:
         variable=customization_var,
         style="radios.Toolbutton",
         command=on_customization_selected,
-        width=9,
     )
     prompt_radio_button.pack(side="left")
 
@@ -336,6 +348,23 @@ company_label = tk.Label(
 )
 company_entry = tk.Entry(sentiment_tab_frame, width=16, font=("Segoe UI", 11))
 
+# Multi company entry
+multi_company_frame = tk.Frame(sentiment_tab_frame)
+company_column_label = tk.Label(
+    multi_company_frame, text="Company column (BW parent category):", font=("Segoe UI", 12)
+)
+company_column = tk.Entry(multi_company_frame, width=16, font=("Segoe UI", 11))
+
+multi_company_label = tk.Label(
+    multi_company_frame, text="List BW companies, seperated by commas, in order of priority:", font=("Segoe UI", 12)
+)
+multi_company_entry = tk.Text(
+    multi_company_frame, width=50, height=3, font=("Segoe UI", 11), wrap=tk.WORD
+)
+company_column_label.pack()
+company_column.pack(pady=(5, 0))
+multi_company_label.pack(pady=(5, 0))
+multi_company_entry.pack(pady=(5, 0))
 
 # System prompt
 system_prompt_frame = tk.Frame(sentiment_tab_frame)
