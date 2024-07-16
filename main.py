@@ -359,12 +359,12 @@ multi_company_label = tk.Label(
     multi_company_frame, text="List BW companies, seperated by commas, in order of priority:", font=("Segoe UI", 12)
 )
 multi_company_entry = tk.Text(
-    multi_company_frame, width=50, height=3, font=("Segoe UI", 11), wrap=tk.WORD
+    multi_company_frame, width=50, height=2, font=("Segoe UI", 11), wrap=tk.WORD
 )
 company_column_label.pack()
-company_column.pack(pady=(5, 0))
-multi_company_label.pack(pady=(5, 0))
-multi_company_entry.pack(pady=(5, 0))
+company_column.pack(pady=(1, 0))
+multi_company_label.pack(pady=(10, 0))
+multi_company_entry.pack(pady=(1, 0))
 
 # System prompt
 system_prompt_frame = tk.Frame(sentiment_tab_frame)
