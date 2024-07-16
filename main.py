@@ -363,7 +363,7 @@ multi_company_entry = tk.Text(
 )
 company_column_label.pack()
 company_column.pack(pady=(1, 0))
-multi_company_label.pack(pady=(10, 0))
+multi_company_label.pack(pady=(8, 0))
 multi_company_entry.pack(pady=(1, 0))
 
 # System prompt
@@ -422,7 +422,7 @@ gpt_model_label.pack(pady=(20, 0))
 gpt_model_var = tk.StringVar(value="GPT-3.5")
 model_radio_frame = tk.Frame(sentiment_tab_frame)
 model_radio_frame.pack()
-model_options = ["GPT-3.5", "GPT-4", "GPT-4o"]
+model_options = ["GPT-3.5", "GPT-4o", "GPT-4"]
 for option in model_options:
     model_radio_button = ttk.Radiobutton(
         model_radio_frame,
@@ -475,25 +475,25 @@ log_text_area.pack(pady=(2, 0))
 instructions_text = """1. Ensure your input file is a .xlsx and contains a column named "Full Text" or "Content" (default for BW and quorum).
 * Note: Works with column headers in any of the first 20 rows (BW exports).
 
-2. Click on the "Browse" button under "Input File" and select the file containing the mentions/tweets.
+2. Click on the "Browse" button next to "Input File" and select the file containing the mentions.
 * Note: If the file is saved to OneDrive, close it before running the tool.
 
-3. Click on the "Browse" button under "Output File" and choose a location and filename for the output.
+3. Click on the "Browse" button next to "Output File" and create a new filename for the output.
 
 4. (Optional): Update sentiment values in Brandwatch (will also mark updated mentions as "Checked" in BW).
 * Requires 'Query Id' and 'Resource Id' columns in input file
 
 5. (Optional) Select a customization option:
 * Default: Use the default system and user prompts.
-* Company: Specify a company name to analyze sentiment "towards".
+* Company: Specify a single company name.
+* Multi-Company: Specify a Brandwatch parent category and a list of companies
 * Custom: Provide custom system and user prompts
 
 6. (Optional) Select a model:
-* GPT-3.5: Best for large batches with less complex text samples.
-* GPT-4: Best for smaller sample sizes and/or longer text samples.
+* GPT-3.5: Less neutral, best for large batches of short text.
+* GPT-4o: Best for smaller batches and/or longer text.
     
-7. Click "Run Sentiment Analysis. 
-* A success message will be displayed when finished.
+7. Click "Run Sentiment Analysis. A success message will be displayed when finished.
 """
 
 instructions_font = tkFont.nametofont("TkDefaultFont")
