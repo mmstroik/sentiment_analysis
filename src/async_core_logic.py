@@ -12,6 +12,7 @@ from tiktoken_ext import openai_public
 
 OPENAI_API_KEY = "***REMOVED***"
 ENCODING = tiktoken.get_encoding("cl100k_base")
+RATE_LIMIT_DELAY = 30  # seconds
 
 
 # Asynchronously processes tweets in batches (based on token counts)
@@ -103,7 +104,7 @@ async def main_batch_processing_loop(
         ]
         
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        timer = asyncio.create_task(asyncio.sleep(60))
+        timer = asyncio.create_task(asyncio.sleep(RATE_LIMIT_DELAY))
         start_time = time.time()
 
         # Handle results
@@ -128,7 +129,7 @@ async def main_batch_processing_loop(
         start_idx = batch_end_idx
 
         if start_idx < len(df):
-            log_callback("Waiting 60 secs for rate limit timer...")
+            log_callback(f"Waiting {str(RATE_LIMIT_DELAY)} secs for rate limit timer...")
             await timer
     
     return start_time
@@ -151,7 +152,7 @@ async def reprocess_errors(
     log_callback(
         f"Waiting for rate limit timer before reprocessing {len(errored_df)} errored mentions..."
     )
-    await asyncio.sleep(60)  # Wait for 60 seconds before starting
+    await asyncio.sleep(RATE_LIMIT_DELAY)  # Wait for 60 seconds before starting
 
     total_errors = len(errored_df)
     processed_errors = 0
