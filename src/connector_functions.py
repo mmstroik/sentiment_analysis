@@ -78,6 +78,7 @@ def setup_sentiment_analysis(
     logprob_checkbox_var,
     company_column=None,
     multi_company_entry=None,
+    separate_company_analysis=False,
 ):
     if not input_file or not output_file:
         messagebox.showerror(
@@ -85,7 +86,6 @@ def setup_sentiment_analysis(
         )
         return
     output_file_extension = os.path.splitext(output_file)[1]
-
     if output_file_extension != ".xlsx":
         log_message("Output file must be a .xlsx file.")
         messagebox.showerror("Error", "Output file must be a .xlsx file.")
@@ -96,6 +96,11 @@ def setup_sentiment_analysis(
             "Error",
             f"The file '{os.path.basename(input_file)}' does not exist.",
         )
+        return
+    input_file_extension = os.path.splitext(input_file)[1]
+    if input_file_extension != ".xlsx":
+        log_message("Input file must be a .xlsx file.")
+        messagebox.showerror("Error", "Input file must be a .xlsx file.")
         return
 
     model, batch_token_limit, batch_requests_limit = select_model(gpt_model)
@@ -128,6 +133,7 @@ def setup_sentiment_analysis(
                 customization_option,
                 company_column,
                 multi_company_entry,
+                separate_company_analysis,
             ),
         )
         thread.start()
@@ -154,12 +160,9 @@ def run_sentiment_analysis_thread(
     customization_option,
     company_column,
     multi_company_entry,
+    separate_company_analysis,
 ):
     log_message(f"-------\nReading file: '{os.path.basename(input_file)}'...")
-
-    # Get the file extension
-    _, file_extension = os.path.splitext(input_file)
-
     # Read the first 20 rows
     df = pd.read_excel(input_file, header=None, nrows=20)
 
@@ -240,8 +243,19 @@ def run_sentiment_analysis_thread(
             )
             enable_button()
             return
+    if customization_option == "Multi-Company" and separate_company_analysis:
+        if "Query Id" not in df.columns or "Resource Id" not in df.columns:
+            log_message(
+                "The input file does not contain the required BW columns 'Query Id' or 'Resource Id'."
+            )
+            messagebox.showerror(
+                "Error",
+                "The input file does not contain the required BW columns 'Query Id' or 'Resource Id'.",
+            )
+            enable_button()
+            return
 
-        df = process_multi_company(df, company_column, multi_company_entry, log_message)
+        df = process_multi_company(df, company_column, multi_company_entry, log_message, separate_company_analysis)
         if df is None:  # User chose not to proceed
             log_message("Analysis cancelled by user.")
             enable_button()
@@ -266,6 +280,9 @@ def run_sentiment_analysis_thread(
         )
     )
     loop.close()
+    
+    if customization_option == "Multi-Company" and separate_company_analysis:
+        df = merge_separate_company_results(df, bw_checkbox_var)
 
     if bw_checkbox_var:
         log_message(f"-------\nUpdating sentiment values in Brandwatch...")
@@ -293,14 +310,12 @@ def run_sentiment_analysis_thread(
     return
 
 
-def process_multi_company(df, company_column, multi_company_entry, log_message):
-    log_message("Creating multi-company designations based on specified order...")
+def process_multi_company(df, company_column, multi_company_entry, log_message, separate_company_analysis=False):
+    
 
-    company_list = [
-        company.strip() for company in multi_company_entry.split(",") if company.strip()
-    ]
+    company_list = [company.strip() for company in multi_company_entry.split(",") if company.strip()]
 
-    # Check if listed companies are present in the dataset
+    # Check if all priority companies are present in the dataset
     companies_in_data = set()
     for companies in df[company_column].dropna():
         companies_in_data.update(company.strip() for company in companies.split(','))
@@ -309,37 +324,91 @@ def process_multi_company(df, company_column, multi_company_entry, log_message):
     
     if missing_companies:
         missing_companies_str = ', '.join(missing_companies)
-        message = f"The following companies in your list were not found in the dataset:\n\n{missing_companies_str}\n\nDo you want to proceed anyway?"
+        message = f"The following companies from your priority list were not found in the dataset:\n\n{missing_companies_str}\n\nDo you want to proceed anyway?"
         proceed = messagebox.askyesno("Companies Not Found", message)
         if not proceed:
             return None
 
+    # Always create the AnalyzedCompany column
     df["AnalyzedCompany"] = ""
 
-    total_analyzed = 0
-    for priority_company in company_list:
-        mask = (df["AnalyzedCompany"] == "") & (
-            df[company_column].apply(
-                lambda x: (
-                    priority_company in {company.strip() for company in x.split(",")}
-                    if pd.notna(x)
-                    else False
+    if not separate_company_analysis:
+        log_message("Creating multi-company designations based on specified order...")
+        # Existing logic for single analysis per mention
+        total_analyzed = 0
+        for priority_company in company_list:
+            mask = (df["AnalyzedCompany"] == "") & (
+                df[company_column].apply(
+                    lambda x: (
+                        priority_company in {company.strip() for company in x.split(",")}
+                        if pd.notna(x)
+                        else False
+                    )
                 )
             )
-        )
-        company_count = mask.sum()
-        df.loc[mask, "AnalyzedCompany"] = priority_company
-        total_analyzed += company_count
-        log_message(
-            f"{company_count} mentions will be analyzed towards {priority_company}"
-        )
+            company_count = mask.sum()
+            df.loc[mask, "AnalyzedCompany"] = priority_company
+            total_analyzed += company_count
+            log_message(f"{company_count} mentions will be analyzed towards {priority_company}")
 
-    unanalyzed_count = len(df) - total_analyzed
-    log_message(
-        f"{unanalyzed_count} mentions will be analyzed without a specific company focus."
-    )
+        unanalyzed_count = len(df) - total_analyzed
+        log_message(f"{unanalyzed_count} mentions will be analyzed without a specific company focus.")
+    else:
+        initial_row_count = len(df)
+        expanded_df = []
+        for _, row in df.iterrows():
+            companies = set(company.strip() for company in row[company_column].split(',')) if pd.notna(row[company_column]) else set()
+            relevant_companies = [company for company in company_list if company in companies]
+            if relevant_companies:
+                # Use the first relevant company for the original row
+                row['AnalyzedCompany'] = relevant_companies[0]
+                expanded_df.append(row)
+                # Create additional rows for other relevant companies
+                for company in relevant_companies[1:]:
+                    new_row = row.copy()
+                    new_row['AnalyzedCompany'] = company
+                    expanded_df.append(new_row)
+            else:
+                expanded_df.append(row)
+        
+        df = pd.DataFrame(expanded_df)
+        log_message(f"Expanded dataset from {initial_row_count} to {len(df)} rows for separate company analysis.")
+        
+        # Count mentions per company
+        company_counts = df['AnalyzedCompany'].value_counts()
+        for company, count in company_counts.items():
+            if company:
+                log_message(f"{count} mentions will be analyzed towards {company}")
+        unanalyzed_count = company_counts.get('', 0)
+        log_message(f"{unanalyzed_count} mentions will be analyzed without a specific company focus.")
 
     return df
+
+
+def merge_separate_company_results(df, bw_upload=False):
+    grouped = df.groupby(['Query Id', 'Resource Id'])
+    
+    merged_rows = []
+    for _, group in grouped:
+        merged_row = group.iloc[0].copy()  # Take the first row as the base
+
+        primary_sentiment = merged_row['Sentiment']
+        primary_company = merged_row['AnalyzedCompany']
+        
+        if bw_upload:
+            # Create tags for Brandwatch upload
+            tags = [f"{row['Sentiment']} toward {row['AnalyzedCompany']}" for _, row in group.iterrows() if row['AnalyzedCompany']]
+            merged_row['BW_Tags'] = ','.join(tags)
+        else:
+            # Create a combined sentiment column
+            sentiments = [f"{row['Sentiment']} toward {row['AnalyzedCompany']}" for _, row in group.iterrows() if row['AnalyzedCompany']]
+            merged_row['Combined_Sentiment'] = ' | '.join(sentiments)
+        
+        merged_row['Sentiment'] = primary_sentiment
+        merged_row['AnalyzedCompany'] = primary_company
+        merged_rows.append(merged_row)
+    
+    return pd.DataFrame(merged_rows)
 
 
 """BRANDWATCH UPLOAD-ONLY CONNECTOR FUNCTIONS"""

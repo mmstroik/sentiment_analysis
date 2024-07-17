@@ -63,6 +63,11 @@ def prepare_data_for_bw(df):
     df_bw["Sentiment"] = df_bw[
         "Sentiment"
     ].str.lower()  # Convert sentiment values to lowercase for api
+
+    if 'BW_Tags' in df_bw.columns:
+        df_bw['addTag'] = df_bw['BW_Tags'].apply(lambda x: x.split(',') if pd.notna(x) else [])
+        df_bw = df_bw.drop(columns=['BW_Tags'])
+
     if "Date" in df_bw.columns:
         df_bw["Date"] = (
             pd.to_datetime(df_bw["Date"]).dt.strftime("%Y-%m-%dT%H:%M:%S.%f") + "+0000"
@@ -80,33 +85,28 @@ def prepare_data_for_bw(df):
 
 
 def create_dict_list(df_bw):
+    base_columns = ["Query Id", "Resource Id", "Sentiment", "Checked"]
+    
+    if 'addTag' in df_bw.columns:
+        base_columns.append('addTag')
+    
     if "Date" in df_bw.columns:
-        sentiment_dicts = (
-            df_bw[["Query Id", "Resource Id", "Sentiment", "Date", "Checked"]]
-            .rename(
-                columns={
-                    "Query Id": "queryId",
-                    "Resource Id": "resourceId",
-                    "Sentiment": "sentiment",
-                    "Date": "date",
-                    "Checked": "checked",
-                }
-            )
-            .to_dict("records")
+        base_columns.append("Date")
+    
+    sentiment_dicts = (
+        df_bw[base_columns]
+        .rename(
+            columns={
+                "Query Id": "queryId",
+                "Resource Id": "resourceId",
+                "Sentiment": "sentiment",
+                "Date": "date",
+                "Checked": "checked",
+                "addTag": "addTag"
+            }
         )
-    else:
-        sentiment_dicts = (
-            df_bw[["Query Id", "Resource Id", "Sentiment", "Checked"]]
-            .rename(
-                columns={
-                    "Query Id": "queryId",
-                    "Resource Id": "resourceId",
-                    "Sentiment": "sentiment",
-                    "Checked": "checked",
-                }
-            )
-            .to_dict("records")
-        )
+        .to_dict("records")
+    )
 
     return sentiment_dicts
 
