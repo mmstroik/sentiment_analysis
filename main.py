@@ -40,6 +40,7 @@ def start_sentiment_analysis():
         logprob_checkbox_var=logprob_checkbox_var.get(),
         company_column=company_column.get(),
         multi_company_entry=multi_company_entry.get("1.0", tk.END),
+        separate_company_analysis=separate_company_tags_checkbox_var.get(),
     )
 
 
@@ -246,7 +247,9 @@ input_frame.pack()
 # input var for existing file check function
 input_var = tk.StringVar()
 input_var.trace_add("write", check_file_exists)
-input_entry = tk.Entry(input_frame, textvariable=input_var, width=50, font=("Segoe UI", 11))
+input_entry = tk.Entry(
+    input_frame, textvariable=input_var, width=50, font=("Segoe UI", 11)
+)
 input_entry.pack(side=tk.RIGHT, padx=(0, 10))
 
 # Add a bit of packing in between the button and entry
@@ -256,8 +259,10 @@ input_button = tk.Button(
 input_button.pack(side=tk.RIGHT, padx=(10, 0))
 
 # create notebook with tabs
-style.configure('TNotebook', tabposition='n') 
-notebook = ttk.Notebook(main_frame, style='TNotebook', takefocus=False, padding=[0, 15, 0, 10])
+style.configure("TNotebook", tabposition="n")
+notebook = ttk.Notebook(
+    main_frame, style="TNotebook", takefocus=False, padding=[0, 15, 0, 10]
+)
 notebook.pack(expand=True, fill=BOTH)
 
 # Sentiment tab
@@ -348,23 +353,45 @@ company_label = tk.Label(
 )
 company_entry = tk.Entry(sentiment_tab_frame, width=16, font=("Segoe UI", 11))
 
+
 # Multi company entry
 multi_company_frame = tk.Frame(sentiment_tab_frame)
+
+separate_company_tags_checkbox_frame = tk.Frame(multi_company_frame)
+separate_company_tags_checkbox_var = tk.IntVar()
+separate_company_tags_checkbox = ttk.Checkbutton(
+    separate_company_tags_checkbox_frame,
+    variable=separate_company_tags_checkbox_var,
+    style="Roundtoggle.Toolbutton",
+)
+separate_company_tags_checkbox_label = tk.Label(
+    separate_company_tags_checkbox_frame,
+    text=" For each post, separately code sentiment toward each\n company mentioned (adds BW tag for each company)",
+    font=("Segoe UI", 12),
+)
 company_column_label = tk.Label(
-    multi_company_frame, text="Company column (BW parent category):", font=("Segoe UI", 12)
+    multi_company_frame,
+    text="Company column (BW parent category):",
+    font=("Segoe UI", 12),
 )
 company_column = tk.Entry(multi_company_frame, width=20, font=("Segoe UI", 11))
 
 multi_company_label = tk.Label(
-    multi_company_frame, text="List BW companies, seperated by commas, in order of priority:", font=("Segoe UI", 12)
+    multi_company_frame,
+    text="List BW companies, seperated by commas (in order of priority):",
+    font=("Segoe UI", 12),
 )
 multi_company_entry = tk.Text(
     multi_company_frame, width=50, height=2, font=("Segoe UI", 11), wrap=tk.WORD
 )
-company_column_label.pack()
+separate_company_tags_checkbox_frame.pack()
+separate_company_tags_checkbox.pack(side=tk.LEFT)
+separate_company_tags_checkbox_label.pack(side=tk.LEFT)
+company_column_label.pack(pady=(10, 0))
 company_column.pack(pady=(1, 0))
 multi_company_label.pack(pady=(8, 0))
 multi_company_entry.pack(pady=(1, 0))
+
 
 # System prompt
 system_prompt_frame = tk.Frame(sentiment_tab_frame)
