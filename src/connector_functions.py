@@ -300,7 +300,7 @@ def process_multi_company(df, company_column, multi_company_entry, log_message):
         company.strip() for company in multi_company_entry.split(",") if company.strip()
     ]
 
-    # Check if all priority companies are present in the dataset
+    # Check if listed companies are present in the dataset
     companies_in_data = set()
     for companies in df[company_column].dropna():
         companies_in_data.update(company.strip() for company in companies.split(','))
@@ -309,7 +309,7 @@ def process_multi_company(df, company_column, multi_company_entry, log_message):
     
     if missing_companies:
         missing_companies_str = ', '.join(missing_companies)
-        message = f"The following companies from your priority list were not found in the dataset:\n\n{missing_companies_str}\n\nDo you want to proceed anyway?"
+        message = f"The following companies in your list were not found in the dataset:\n\n{missing_companies_str}\n\nDo you want to proceed anyway?"
         proceed = messagebox.askyesno("Companies Not Found", message)
         if not proceed:
             return None
