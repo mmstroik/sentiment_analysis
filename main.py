@@ -307,7 +307,7 @@ bw_checkbox_var = tk.IntVar()
 
 bw_checkbox = ttk.Checkbutton(
     sentiment_tab_frame,
-    text=" Update sentiment values in Brandwatch",
+    text=" Upload sentiment values to Brandwatch",
     variable=bw_checkbox_var,
     style="Roundtoggle.Toolbutton",
 )
@@ -366,7 +366,7 @@ separate_company_tags_checkbox = ttk.Checkbutton(
 )
 separate_company_tags_checkbox_label = tk.Label(
     separate_company_tags_checkbox_frame,
-    text=" For each post, separately code sentiment toward each\n company mentioned (adds BW tag for each company)",
+    text=" Separately code sentiment toward each company\n  mentioned in a post (adds BW tag for each company)",
     font=("Segoe UI", 12),
 )
 company_column_label = tk.Label(
@@ -378,7 +378,7 @@ company_column = tk.Entry(multi_company_frame, width=20, font=("Segoe UI", 11))
 
 multi_company_label = tk.Label(
     multi_company_frame,
-    text="List BW companies, seperated by commas (in order of priority):",
+    text="List BW companies seperated by commas (in order of priority):",
     font=("Segoe UI", 12),
 )
 multi_company_entry = tk.Text(
