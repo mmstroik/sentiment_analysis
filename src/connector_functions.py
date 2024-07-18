@@ -372,6 +372,7 @@ def process_multi_company(df, company_column, multi_company_entry, log_message, 
                 expanded_df.append(row)
         
         df = pd.DataFrame(expanded_df)
+        df.reset_index(drop=True, inplace=True)  # Reset the index to ensure unique indices
         log_message(f"Expanded dataset from {initial_row_count} to {len(df)} rows for separate company analysis.")
         
         # Count mentions per company
