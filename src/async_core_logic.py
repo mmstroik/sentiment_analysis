@@ -104,7 +104,7 @@ async def main_batch_processing_loop(
         batch = df.iloc[start_idx:batch_end_idx]
         if customization_option == "Multi-Company":
             tasks = [
-                call_openai_async(session, tweet, company, system_prompt, user_prompt, user_prompt2, model, probs_bool, customization_option)
+                call_openai_async(session, tweet, system_prompt, user_prompt, user_prompt2, model, probs_bool, customization_option, company)
                 for tweet, company in zip(batch["Full Text"], batch["AnalyzedCompany"])
             ]
         else:
@@ -178,7 +178,7 @@ async def reprocess_errors(
         batch = errored_df.iloc[start_idx:batch_end_idx]
         if customization_option == "Multi-Company":
             tasks = [
-                call_openai_async(session, tweet, company, system_prompt, user_prompt, user_prompt2, model, probs_bool, customization_option)
+                call_openai_async(session, tweet, system_prompt, user_prompt, user_prompt2, model, probs_bool, customization_option, company)
                 for tweet, company in zip(batch["Full Text"], batch["AnalyzedCompany"])
             ]
         else:
@@ -221,13 +221,13 @@ async def reprocess_errors(
 async def call_openai_async(
     session: ClientSession,
     tweet: str,
-    company: str,
     system_prompt: str,
     user_prompt: str,
     user_prompt2: str,
     model: str,
     probs_bool: bool = False,
     customization_option: str = "Default",
+    company: str = None,
     max_retries=6,
 ):
 
