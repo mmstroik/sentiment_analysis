@@ -248,8 +248,8 @@ async def call_openai_async(
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f'{user_prompt} "{tweet}"\n{user_prompt2}'},
         ],
-        "temperature": 0,
-        "max_tokens": 3,
+        "temperature": 0.3,
+        "max_tokens": 1,
         "logprobs": probs_bool,
     }
     headers = {
