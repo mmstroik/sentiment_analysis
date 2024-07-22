@@ -63,6 +63,9 @@ def prepare_data_for_bw(df):
     df_bw["Sentiment"] = df_bw[
         "Sentiment"
     ].str.lower()  # Convert sentiment values to lowercase for api
+    
+    # if any mentions have a sentiment value that Is NOT: "positive", "negative", or "neutral", remove them from df before upload
+    df_bw = df_bw[df_bw["Sentiment"].isin(["positive", "negative", "neutral"])]
 
     if 'BW_Tags' in df_bw.columns:
         df_bw['addTag'] = df_bw['BW_Tags'].apply(lambda x: x.split(',') if pd.notna(x) else [])

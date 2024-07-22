@@ -305,7 +305,7 @@ class SentimentAnalysisApp:
         self.gpt_model_label.pack(pady=(20, 0))
         model_radio_frame = tk.Frame(self.sentiment_tab_frame)
         model_radio_frame.pack()
-        model_options = ["GPT-3.5", "GPT-4o", "GPT-4"]
+        model_options = [" GPT-3.5 ", " GPT-4o ", " GPT-4 ", " GPT-4o mini "]
         for option in model_options:
             model_radio_button = ttk.Radiobutton(
                 model_radio_frame,
@@ -313,7 +313,6 @@ class SentimentAnalysisApp:
                 value=option,
                 variable=self.gpt_model_var,
                 style="radios.Toolbutton",
-                width=7,
             )
             model_radio_button.pack(side="left")
 

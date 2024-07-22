@@ -72,6 +72,12 @@ async def process_tweets_in_batches(
                 customization_option,
                 errored_df,
             )
+            # if any error still exists, notify the user how many and move on
+            errored_df = df[df["Sentiment"].isin(["Error", ""])]
+            if not errored_df.empty:
+                log_callback(
+                    f"Still error processing {len(errored_df)} mentions. Contact Milo if persistent."
+                )
     return df, start_time
 
 
@@ -164,6 +170,7 @@ async def reprocess_errors(
         f"Waiting for rate limit timer before reprocessing {len(errored_df)} errored mentions..."
     )
     await asyncio.sleep(RATE_LIMIT_DELAY)  # Wait for 60 seconds before starting
+    await asyncio.sleep(5)
 
     total_errors = len(errored_df)
     processed_errors = 0
@@ -242,7 +249,7 @@ async def call_openai_async(
             {"role": "user", "content": f'{user_prompt} "{tweet}"\n{user_prompt2}'},
         ],
         "temperature": 0,
-        "max_tokens": 5,
+        "max_tokens": 3,
         "logprobs": probs_bool,
     }
     headers = {
