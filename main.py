@@ -62,7 +62,7 @@ class SentimentAnalysisApp:
         self.output_var.trace_add("write", self.check_file_exists)
         self.progress_var = tk.DoubleVar()
         self.customization_var = tk.StringVar(value="Default")
-        self.gpt_model_var = tk.StringVar(value="GPT-3.5")
+        self.gpt_model_var = tk.StringVar(value=" GPT-3.5 ")
         self.bw_checkbox_var = tk.IntVar()
         self.logprob_checkbox_var = tk.IntVar()
         self.separate_company_tags_checkbox_var = tk.IntVar()
