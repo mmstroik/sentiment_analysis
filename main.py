@@ -61,7 +61,7 @@ class SentimentAnalysisApp:
         self.output_var = tk.StringVar()
         self.output_var.trace_add("write", self.check_file_exists)
         self.progress_var = tk.DoubleVar()
-        self.customization_var = tk.StringVar(value="Default")
+        self.customization_var = tk.StringVar(value=" Default ")
         self.gpt_model_var = tk.StringVar(value=" GPT-3.5 ")
         self.bw_checkbox_var = tk.IntVar()
         self.logprob_checkbox_var = tk.IntVar()
@@ -100,7 +100,7 @@ class SentimentAnalysisApp:
         self.input_entry.pack(side=tk.RIGHT, padx=(0, 10))
 
         input_button = tk.Button(
-            input_frame, text="Browse", command=self.browse_input_file
+            input_frame, text="Browse", font=("Segoe UI", 11), command=self.browse_input_file
         )
         input_button.pack(side=tk.RIGHT, padx=(10, 0))
 
@@ -179,7 +179,7 @@ class SentimentAnalysisApp:
         customization_label.pack(pady=(15, 0))
         prompt_radio_frame = tk.Frame(self.sentiment_tab_frame)
         prompt_radio_frame.pack()
-        prompt_options = ["Default", "Company", "Multi-Company", "Custom"]
+        prompt_options = [" Default ", " Company ", " Multi-Company ", " Custom "]
         for option in prompt_options:
             prompt_radio_button = ttk.Radiobutton(
                 prompt_radio_frame,
@@ -431,7 +431,7 @@ class SentimentAnalysisApp:
 
     def on_customization_selected(self, *args):
         selected_option = self.customization_var.get()
-        if selected_option == "Default":
+        if selected_option == " Default ":
             self.company_label.pack_forget()
             self.company_entry.pack_forget()
             self.multi_company_frame.pack_forget()
@@ -439,7 +439,7 @@ class SentimentAnalysisApp:
             self.system_prompt_entry.pack_forget()
             self.user_prompt_frame.pack_forget()
             self.user_prompt_entry_frame.pack_forget()
-        elif selected_option == "Company":
+        elif selected_option == " Company ":
             self.company_label.pack(before=self.gpt_model_label, pady=(15, 0))
             self.company_entry.pack(before=self.gpt_model_label)
             self.multi_company_frame.pack_forget()
@@ -447,7 +447,7 @@ class SentimentAnalysisApp:
             self.system_prompt_entry.pack_forget()
             self.user_prompt_frame.pack_forget()
             self.user_prompt_entry_frame.pack_forget()
-        elif selected_option == "Multi-Company":
+        elif selected_option == " Multi-Company ":
             self.company_label.pack_forget()
             self.company_entry.pack_forget()
             self.multi_company_frame.pack(before=self.gpt_model_label, pady=(15, 0))
@@ -455,7 +455,7 @@ class SentimentAnalysisApp:
             self.system_prompt_entry.pack_forget()
             self.user_prompt_frame.pack_forget()
             self.user_prompt_entry_frame.pack_forget()
-        elif selected_option == "Custom":
+        elif selected_option == " Custom ":
             self.company_label.pack_forget()
             self.company_entry.pack_forget()
             self.multi_company_frame.pack_forget()
@@ -485,7 +485,7 @@ class SentimentAnalysisApp:
             log_message=self.log_message,
             enable_button=self.enable_button,
             disable_button=self.disable_button,
-            customization_option=self.customization_var.get(),
+            customization_option=self.customization_var.get().strip(),
             company_entry=self.company_entry.get(),
             system_prompt_entry=self.system_prompt_entry.get("1.0", tk.END),
             user_prompt_entry=self.user_prompt_entry.get(),
