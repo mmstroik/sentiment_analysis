@@ -9,9 +9,7 @@ import tiktoken
 import tiktoken_ext
 from tiktoken_ext import openai_public
 
-
 OPENAI_API_KEY = "***REMOVED***"
-ENCODING = tiktoken.get_encoding("cl100k_base")
 RATE_LIMIT_DELAY = 30  # seconds
 
 
@@ -29,7 +27,7 @@ async def process_tweets_in_batches(
     batch_requests_limit,
     customization_option,
 ):
-    calculate_token_count(df, system_prompt, user_prompt, user_prompt2, log_callback, customization_option)
+    calculate_token_count(df, system_prompt, user_prompt, user_prompt2, model, log_callback, customization_option)
     total = len(df)
     processed = 0
     async with ClientSession() as session:
@@ -283,10 +281,10 @@ async def call_openai_async(
             return "Error"       
 
 
-def calculate_token_count(df, system_prompt, user_prompt, user_prompt2, log_callback, customization_option):
+def calculate_token_count(df, system_prompt, user_prompt, user_prompt2, model, log_callback, customization_option):
     log_callback("Calculating token counts for each mention...")
     full_user_prompt = f'{user_prompt} ""\n{user_prompt2}'
-
+    ENCODING = tiktoken.encoding_for_model(model)
     if customization_option == "Multi-Company":
         # Calculate token count for the longest possible prompt (with " toward Company")
         longest_company_name = df['AnalyzedCompany'].max()

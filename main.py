@@ -386,9 +386,9 @@ class SentimentAnalysisApp:
 * Custom: Provide custom system and user prompts
 
 6. (Optional) Select a model:
-* GPT-3.5: Less accurate but less neutral
+* GPT-3.5: Less accurate but much less neutral
 * GPT-4o mini: Best for larger batches and/or shorter text.
-* GPT-4o: Best for smaller batches and/or longer text.
+* GPT-4o: Best for smaller batches and/or long text.
             
 7. Click "Run Sentiment Analysis. A success message will be displayed when finished.
 """
