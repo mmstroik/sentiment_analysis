@@ -17,15 +17,13 @@ from src.multi_company_analysis import process_multi_company, merge_separate_com
 def select_model(gpt_model):
     model_limits = {
         "gpt-3.5-turbo": {"token_limit": 5000000, "requests_limit": 5000},
-        "gpt-4-turbo": {"token_limit": 400000, "requests_limit": 5000},
         "gpt-4o": {"token_limit": 1000000, "requests_limit": 5000},
-        "gpt-4o-mini": {"token_limit": 500000, "requests_limit": 5000},
+        "gpt-4o-mini": {"token_limit": 5000000, "requests_limit": 5000},
     }
     model_mapping = {
         " GPT-3.5 ": "gpt-3.5-turbo",
-        " GPT-4 ": "gpt-4-turbo",
-        " GPT-4o ": "gpt-4o",
         " GPT-4o mini ": "gpt-4o-mini",
+        " GPT-4o ": "gpt-4o",
     }
     model = model_mapping[gpt_model]
     return (
@@ -53,7 +51,7 @@ def set_prompts(
         user_prompt = "Text:"
         user_prompt2 = "Sentiment:"
     elif customization_option == "Multi-Company":
-        # Placeholder for company name (uses .format to replace bracketed text)
+        # Placeholder for company name (uses .format to replace bracketed text via string matching)
         system_prompt = "Classify the sentiment of the following Text{toward_company} in one word from this list [Positive, Neutral, Negative]."
         user_prompt = "Text:"
         user_prompt2 = "Sentiment:"

@@ -305,7 +305,7 @@ class SentimentAnalysisApp:
         self.gpt_model_label.pack(pady=(20, 0))
         model_radio_frame = tk.Frame(self.sentiment_tab_frame)
         model_radio_frame.pack()
-        model_options = [" GPT-3.5 ", " GPT-4o ", " GPT-4 ", " GPT-4o mini "]
+        model_options = [" GPT-3.5 ", " GPT-4o mini ", " GPT-4o "]
         for option in model_options:
             model_radio_button = ttk.Radiobutton(
                 model_radio_frame,
@@ -382,11 +382,12 @@ class SentimentAnalysisApp:
 5. (Optional) Select a customization option:
 * Default: Use the default system and user prompts.
 * Company: Specify a single company name.
-* Multi-Company: Specify a Brandwatch parent category and a list of companies
+* Multi-Company: Specify Brandwatch company categories
 * Custom: Provide custom system and user prompts
 
 6. (Optional) Select a model:
-* GPT-3.5: Less neutral, best for large batches of short text.
+* GPT-3.5: Less accurate but less neutral
+* GPT-4o mini: Best for larger batches and/or shorter text.
 * GPT-4o: Best for smaller batches and/or longer text.
             
 7. Click "Run Sentiment Analysis. A success message will be displayed when finished.
