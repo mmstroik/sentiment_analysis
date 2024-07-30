@@ -90,9 +90,6 @@ def prepare_data_for_bw(df):
 def create_dict_list(df_bw):
     base_columns = ["Query Id", "Resource Id", "Sentiment", "Checked"]
     
-    if 'addTag' in df_bw.columns:
-        base_columns.append('addTag')
-    
     if "Date" in df_bw.columns:
         base_columns.append("Date")
     
@@ -105,11 +102,16 @@ def create_dict_list(df_bw):
                 "Sentiment": "sentiment",
                 "Date": "date",
                 "Checked": "checked",
-                "addTag": "addTag"
             }
         )
         .to_dict("records")
     )
+
+    # Only add 'addTag' if it exists and is not empty
+    if 'BW_Tags' in df_bw.columns:
+        for i, row in df_bw.iterrows():
+            if pd.notna(row['BW_Tags']) and row['BW_Tags']:
+                sentiment_dicts[i]['addTag'] = row['BW_Tags'].split(',')
 
     return sentiment_dicts
 
