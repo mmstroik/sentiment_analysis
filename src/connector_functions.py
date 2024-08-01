@@ -7,7 +7,7 @@ import time
 
 from src.async_core_logic import process_tweets_in_batches
 from src.bw_api_handling import update_bw_sentiment
-from src.multi_company_analysis import process_multi_company, merge_separate_company_results
+from src.multi_company_analysis import process_multi_company, merge_separate_company_results, create_company_column
 
 
 """GUI <-> CORE LOGIC CONNECTOR FUNCTIONS"""
@@ -227,11 +227,16 @@ def run_sentiment_analysis_thread(
             enable_button()
             return
         if company_column not in df.columns:
-            error_message = f"The specified company column name '{company_column}' does not exist in the input file."
-            log_message(error_message)
-            messagebox.showerror("Error", error_message)
-            enable_button()
-            return
+            log_message(f"Column '{company_column}' not found. Checking for alternative format...")
+            company_mentions = create_company_column(df, company_column, multi_company_entry)
+            if company_mentions is None:
+                error_message = f"Neither the specified company column '{company_column}' nor the alternative format columns were found in the input file."
+                log_message(error_message)
+                messagebox.showerror("Error", error_message)
+                enable_button()
+                return
+            df[company_column] = company_mentions
+            log_message(f"Created '{company_column}' column from alternative format.")
 
         df = process_multi_company(df, company_column, multi_company_entry, log_message, separate_company_analysis)
         if df is None:  # User chose not to proceed

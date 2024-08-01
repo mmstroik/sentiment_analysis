@@ -2,6 +2,21 @@ import pandas as pd
 from tkinter import messagebox
 
 
+def create_company_column(df, company_column, multi_company_entry):
+    companies = [company.strip() for company in multi_company_entry.split(",")]
+    company_columns = [col for col in df.columns if col.startswith(f"{company_column} - ")]
+    
+    if not company_columns:
+        return None  
+    
+    company_mentions = []
+    for _, row in df.iterrows():
+        mentioned_companies = [col.split(" - ", 1)[1] for col in company_columns if row[col] == "X" and col.split(" - ", 1)[1] in companies]
+        company_mentions.append(",".join(mentioned_companies))
+    
+    return pd.Series(company_mentions)
+
+
 def process_multi_company(df, company_column, multi_company_entry, log_message, separate_company_analysis=False):
     company_list = [company.strip() for company in multi_company_entry.split(",") if company.strip()]
 
