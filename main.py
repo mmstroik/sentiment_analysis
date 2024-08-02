@@ -62,7 +62,7 @@ class SentimentAnalysisApp:
         self.output_var.trace_add("write", self.check_file_exists)
         self.progress_var = tk.DoubleVar()
         self.customization_var = tk.StringVar(value=" Default ")
-        self.gpt_model_var = tk.StringVar(value=" GPT-3.5 ")
+        self.gpt_model_var = tk.StringVar(value=" GPT-4o mini ")
         self.bw_checkbox_var = tk.IntVar()
         self.logprob_checkbox_var = tk.IntVar()
         self.separate_company_tags_checkbox_var = tk.IntVar()
@@ -372,7 +372,7 @@ class SentimentAnalysisApp:
 * Note: Works with column headers in any of the first 20 rows (BW exports).
 
 2. Click on the "Browse" button next to "Input File" and select the file containing the mentions.
-* Note: If the file is saved to OneDrive, close it before running the tool.
+* Note: If the file is saved to OneDrive/SharePoint, close it before running the tool.
 
 3. Click on the "Browse" button next to "Output File" and create a new filename for the output.
 
