@@ -87,9 +87,9 @@ def setup_sentiment_analysis(
         )
         return
     output_file_extension = os.path.splitext(output_file)[1]
-    if output_file_extension != ".xlsx":
-        log_message("Output file must be a .xlsx file.")
-        messagebox.showerror("Error", "Output file must be a .xlsx file.")
+    if output_file_extension != ".xlsx" and output_file_extension != ".csv":
+        log_message("Output file must be a .xlsx or .csv file.")
+        messagebox.showerror("Error", "Output file must be a .xlsx or .csv file.")
         return
     if not os.path.exists(input_file):
         log_message(f"Error: The file '{os.path.basename(input_file)}' does not exist.")
@@ -99,9 +99,9 @@ def setup_sentiment_analysis(
         )
         return
     input_file_extension = os.path.splitext(input_file)[1]
-    if input_file_extension != ".xlsx":
-        log_message("Input file must be a .xlsx file.")
-        messagebox.showerror("Error", "Input file must be a .xlsx file.")
+    if input_file_extension != ".xlsx" and input_file_extension != ".csv":
+        log_message("Input file must be a .xlsx or .csv file.")
+        messagebox.showerror("Error", "Input file must be a .xlsx or .csv file.")
         return
 
     model, batch_token_limit, batch_requests_limit = select_model(gpt_model)
@@ -164,29 +164,21 @@ def run_sentiment_analysis_thread(
     separate_company_analysis,
 ):
     log_message(f"-------\nReading file: '{os.path.basename(input_file)}'...")
-    # Read the first 20 rows
-    df = pd.read_excel(input_file, header=None, nrows=20)
 
-    # Check for 'Full Text' or 'Content' in first 20 rows
-    if "Full Text" in df.iloc[:20].values:
-        full_text_row = df.iloc[:20].isin(["Full Text"]).any(axis=1).idxmax()
-        log_message("'Full Text' column found. Processing the full file...")
-    elif "Content" in df.iloc[:20].values:
-        full_text_row = df.iloc[:20].isin(["Content"]).any(axis=1).idxmax()
-        log_message("'Content' column found. Processing the full file...")
+    file_extension = os.path.splitext(input_file)[1].lower()
+
+    if file_extension == '.csv':
+        df = read_csv_file(input_file, log_message)
+    elif file_extension in ['.xlsx', '.xls']:
+        df = read_excel_file(input_file, log_message)
     else:
-        log_message(
-            "Error: The input file does not contain the required column 'Full Text' or 'Content'."
-        )
-        messagebox.showerror(
-            "Error",
-            "The input file does not contain the required column 'Full Text' or 'Content'.",
-        )
+        log_message(f"Error: Unsupported file format. Please use CSV or Excel files.")
         enable_button()
         return
 
-    # read the full file, skipping rows above the column names
-    df = pd.read_excel(input_file, header=full_text_row)
+    if df is None:
+        enable_button()
+        return
 
     if "Content" in df.columns and "Full Text" not in df.columns:
         df.rename(columns={"Content": "Full Text"}, inplace=True)
@@ -274,8 +266,10 @@ def run_sentiment_analysis_thread(
     log_message(f"Saving results to excel...")
     df.drop(columns=["Token Count"], inplace=True)
     update_progress_gui(98)
-
-    df.to_excel(output_file, index=False)
+    if os.path.splitext(output_file)[1].lower() == '.csv':
+        df.to_csv(output_file, index=False)
+    else:
+        df.to_excel(output_file, index=False)
     update_progress_gui(100)
     log_message(f"Sentiment analysis results saved to {output_file}.")
     messagebox.showinfo("Success", "Sentiment analysis completed successfully.")
@@ -292,6 +286,52 @@ def run_sentiment_analysis_thread(
     enable_button()
     return
 
+
+def read_csv_file(input_file, log_message):
+    # Read the first 20 rows to check for metadata
+    with open(input_file, 'r', encoding='utf-8') as f:
+        first_20_lines = [next(f) for _ in range(20)]
+
+    # Find the header row
+    header_row = 0
+    for i, line in enumerate(first_20_lines):
+        if "Full Text" in line or "Content" in line:
+            header_row = i
+            break
+
+    if header_row == 0:
+        log_message("Warning: 'Full Text' or 'Content' column not found in the first 20 rows. Assuming the first row is the header.")
+    else:
+        log_message(f"Found header row at line {header_row + 1}")
+
+    # Read the CSV file, skipping rows above the header
+    df = pd.read_csv(input_file, skiprows=header_row)
+
+    if "Full Text" not in df.columns and "Content" not in df.columns:
+        log_message("Error: The input file does not contain the required column 'Full Text' or 'Content'.")
+        return None
+
+    return df
+
+def read_excel_file(input_file, log_message):
+    # Read the first 20 rows
+    df = pd.read_excel(input_file, header=None, nrows=20)
+
+    # Check for 'Full Text' or 'Content' in first 20 rows
+    if "Full Text" in df.iloc[:20].values:
+        full_text_row = df.iloc[:20].isin(["Full Text"]).any(axis=1).idxmax()
+        log_message("'Full Text' column found. Processing the full file...")
+    elif "Content" in df.iloc[:20].values:
+        full_text_row = df.iloc[:20].isin(["Content"]).any(axis=1).idxmax()
+        log_message("'Content' column found. Processing the full file...")
+    else:
+        log_message("Error: The input file does not contain the required column 'Full Text' or 'Content'.")
+        return None
+
+    # read the full file, skipping rows above the column names
+    df = pd.read_excel(input_file, header=full_text_row)
+
+    return df
 
 """BRANDWATCH UPLOAD-ONLY CONNECTOR FUNCTIONS"""
 

@@ -100,7 +100,10 @@ class SentimentAnalysisApp:
         self.input_entry.pack(side=tk.RIGHT, padx=(0, 10))
 
         input_button = tk.Button(
-            input_frame, text="Browse", font=("Segoe UI", 11), command=self.browse_input_file
+            input_frame,
+            text="Browse",
+            font=("Segoe UI", 11),
+            command=self.browse_input_file,
         )
         input_button.pack(side=tk.RIGHT, padx=(10, 0))
 
@@ -333,7 +336,7 @@ class SentimentAnalysisApp:
             command=self.start_bw_upload,
         )
         self.bw_upload_button.pack(pady=(30, 12))
-        
+
     def create_progress_bar(self):
         self.placeholder_frame = ttk.Frame(self.main_frame, height=11, width=450)
         self.placeholder_frame.pack(pady=(5, 0), padx=(5, 5), fill=tk.X)
@@ -358,7 +361,7 @@ class SentimentAnalysisApp:
             self.instructions_frame, text="Instructions:", font=("Segoe UI", 12)
         )
         instructions_label.pack(fill="x")
-        
+
         instructions_text_area = SimpleMarkdownText(
             self.instructions_frame,
             wrap=tk.WORD,
@@ -409,13 +412,17 @@ class SentimentAnalysisApp:
 
     # GUI EVENT HANDLING FUNCTIONS
     def browse_input_file(self):
-        file_path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.xlsx")])
+        # file type can be excel or csv
+        file_path = filedialog.askopenfilename(
+            filetypes=[("Excel Files", "*.xlsx"), ("CSV Files", "*.csv")]
+        )
         self.input_entry.delete(0, tk.END)
         self.input_entry.insert(0, file_path)
 
     def browse_output_file(self):
         file_path = filedialog.asksaveasfilename(
-            defaultextension=".xlsx", filetypes=[("Excel Files", "*.xlsx")]
+            defaultextension=".xlsx",
+            filetypes=[("Excel Files", "*.xlsx"), ("CSV Files", "*.csv")],
         )
         self.output_entry.delete(0, tk.END)
         self.output_entry.insert(0, file_path)
