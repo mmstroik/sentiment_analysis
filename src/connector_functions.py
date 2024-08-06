@@ -172,11 +172,16 @@ def run_sentiment_analysis_thread(
     elif file_extension in ['.xlsx', '.xls']:
         df = read_excel_file(input_file, log_message)
     else:
-        log_message(f"Error: Unsupported file format. Please use CSV or Excel files.")
+        error_message = "Input file must be a .xlsx or .csv file."
+        log_message("Error: " + error_message)
+        messagebox.showerror("Error", error_message)
         enable_button()
         return
 
     if df is None:
+        error_message = "The input file does not contain the required column 'Full Text' or 'Content'."
+        log_message("Error: " + error_message)
+        messagebox.showerror("Error", error_message)
         enable_button()
         return
 
@@ -293,23 +298,19 @@ def read_csv_file(input_file, log_message):
         first_20_lines = [next(f) for _ in range(20)]
 
     # Find the header row
-    header_row = 0
+    header_row = None
     for i, line in enumerate(first_20_lines):
         if "Full Text" in line or "Content" in line:
             header_row = i
             break
+        else:
+            return None
 
-    if header_row == 0:
-        log_message("Warning: 'Full Text' or 'Content' column not found in the first 20 rows. Assuming the first row is the header.")
-    else:
-        log_message(f"Found header row at line {header_row + 1}")
+    log_message(f"Found header row at line {header_row + 1}")
 
     # Read the CSV file, skipping rows above the header
     df = pd.read_csv(input_file, skiprows=header_row)
 
-    if "Full Text" not in df.columns and "Content" not in df.columns:
-        log_message("Error: The input file does not contain the required column 'Full Text' or 'Content'.")
-        return None
 
     return df
 
@@ -325,7 +326,6 @@ def read_excel_file(input_file, log_message):
         full_text_row = df.iloc[:20].isin(["Content"]).any(axis=1).idxmax()
         log_message("'Content' column found. Processing the full file...")
     else:
-        log_message("Error: The input file does not contain the required column 'Full Text' or 'Content'.")
         return None
 
     # read the full file, skipping rows above the column names
@@ -348,7 +348,6 @@ def create_bw_upload_thread(
                 update_progress_gui,
                 log_message,
                 enable_button,
-                disable_button,
             ),
         )
         thread.start()
@@ -362,35 +361,29 @@ def setup_bw_upload(
     update_progress_gui,
     log_message,
     enable_button,
-    disable_button,
 ):
 
     log_message(f"Reading file: '{os.path.basename(input_file)}'...")
 
-    df = pd.read_excel(input_file, header=None)
+    file_extension = os.path.splitext(input_file)[1].lower()
 
-    full_text_row = (
-        df.iloc[:20]
-        .apply(lambda row: row.astype(str).str.contains("Full Text").any(), axis=1)
-        .idxmax()
-    )
-
-    if full_text_row is None:
-        log_message(
-            "Error: The input file does not contain the required column 'Full Text'."
-        )
-        messagebox.showerror(
-            "Error",
-            "The input file does not contain the required column 'Full Text'.",
-        )
+    if file_extension == '.csv':
+        df = read_csv_file(input_file, log_message)
+    elif file_extension in ['.xlsx', '.xls']:
+        df = read_excel_file(input_file, log_message)
+    else:
+        error_message = "Input file must be a .xlsx or .csv file."
+        log_message("Error: " + error_message)
+        messagebox.showerror("Error", error_message)
         enable_button()
         return
 
-    # Drop the rows above the 'Full Text' row and set the 'Full Text' row as the header
-    df.columns = df.iloc[full_text_row]
-    df = df.iloc[(full_text_row + 1) :].reset_index(drop=True)
-
-    log_message("'Full Text' column found.")
+    if df is None:
+        error_message = "The input file does not contain the required column 'Full Text'."
+        log_message("Error: " + error_message)
+        messagebox.showerror("Error", error_message)
+        enable_button()
+        return
 
     if "Query Id" not in df.columns or "Resource Id" not in df.columns:
         messagebox.showerror(
