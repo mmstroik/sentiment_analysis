@@ -99,10 +99,6 @@ def setup_sentiment_analysis(
         )
         return
     input_file_extension = os.path.splitext(input_file)[1]
-    if input_file_extension != ".xlsx" and input_file_extension != ".csv":
-        log_message("Input file must be a .xlsx or .csv file.")
-        messagebox.showerror("Error", "Input file must be a .xlsx or .csv file.")
-        return
 
     model, batch_token_limit, batch_requests_limit = select_model(gpt_model)
     system_prompt, user_prompt, user_prompt2 = set_prompts(
@@ -172,7 +168,7 @@ def run_sentiment_analysis_thread(
     elif file_extension in ['.xlsx', '.xls']:
         df = read_excel_file(input_file, log_message)
     else:
-        error_message = "Input file must be a .xlsx or .csv file."
+        error_message = "Input file must be a .xlsx or .csv."
         log_message("Error: " + error_message)
         messagebox.showerror("Error", error_message)
         enable_button()
@@ -263,20 +259,22 @@ def run_sentiment_analysis_thread(
     
     if customization_option == "Multi-Company" and separate_company_analysis:
         df = merge_separate_company_results(df, bw_checkbox_var)
-
-    if bw_checkbox_var:
-        log_message(f"-------\nUpdating sentiment values in Brandwatch...")
-        update_bw_sentiment(df, log_message)
-
-    log_message(f"Saving results to excel...")
+    
+    output_file_extension = os.path.splitext(output_file)[1]
+    log_message(f"Saving results to a {output_file_extension}...")
     df.drop(columns=["Token Count"], inplace=True)
-    update_progress_gui(98)
-    if os.path.splitext(output_file)[1].lower() == '.csv':
+    if output_file_extension == '.csv':
         df.to_csv(output_file, index=False)
     else:
         df.to_excel(output_file, index=False)
-    update_progress_gui(100)
     log_message(f"Sentiment analysis results saved to {output_file}.")
+    
+    if bw_checkbox_var:
+        log_message(f"-------\nUpdating sentiment values in Brandwatch...")
+        update_bw_sentiment(df, log_message)
+        
+    update_progress_gui(100)
+    log_message("Sentiment analysis completed successfully.")
     messagebox.showinfo("Success", "Sentiment analysis completed successfully.")
 
     elapsed_time = time.time() - start_time
@@ -322,10 +320,10 @@ def read_excel_file(input_file, log_message):
     # Check for 'Full Text' or 'Content' in first 20 rows
     if "Full Text" in df.iloc[:20].values:
         full_text_row = df.iloc[:20].isin(["Full Text"]).any(axis=1).idxmax()
-        log_message("'Full Text' column found. Processing the full file...")
+        log_message("'Full Text' column found. Processing the full xlsx...")
     elif "Content" in df.iloc[:20].values:
         full_text_row = df.iloc[:20].isin(["Content"]).any(axis=1).idxmax()
-        log_message("'Content' column found. Processing the full file...")
+        log_message("'Content' column found. Processing the full xlsx...")
     else:
         return None
 
