@@ -303,12 +303,13 @@ def read_csv_file(input_file, log_message):
         if "Full Text" in line or "Content" in line:
             header_row = i
             break
-        else:
-            return None
+    if header_row is None:
+        return None
 
     log_message(f"Found header row at line {header_row + 1}")
 
     # Read the CSV file, skipping rows above the header
+    log_message(f"Reading the full csv..")
     df = pd.read_csv(input_file, skiprows=header_row)
 
 
