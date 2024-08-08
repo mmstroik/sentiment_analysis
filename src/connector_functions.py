@@ -259,6 +259,7 @@ def run_sentiment_analysis_thread(
     
     if customization_option == "Multi-Company" and separate_company_analysis:
         df = merge_separate_company_results(df, bw_checkbox_var)
+        log_message(f"Merged expanded seperate company results back into {len(df)} mentions.")
     
     output_file_extension = os.path.splitext(output_file)[1]
     log_message(f"Saving results to a {output_file_extension}...")
@@ -362,7 +363,7 @@ def setup_bw_upload(
     enable_button,
 ):
 
-    log_message(f"Reading file: '{os.path.basename(input_file)}'...")
+    log_message(f"-------\nReading file: '{os.path.basename(input_file)}'...")
 
     file_extension = os.path.splitext(input_file)[1].lower()
 

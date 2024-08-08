@@ -12,7 +12,7 @@ MAX_RATE_LIMIT_WAIT_TIME = 600  # 10 minutes in seconds
 
 
 def update_bw_sentiment(df, log_callback):
-    cleaned_sentiment_dicts = prepare_data_for_bw(df)
+    cleaned_sentiment_dicts = prepare_data_for_bw(df, log_callback)
     chunks = [
         cleaned_sentiment_dicts[i : i + 1360]
         for i in range(0, len(cleaned_sentiment_dicts), 1360)
@@ -58,18 +58,29 @@ def update_bw_sentiment(df, log_callback):
         i += 1
 
 
-def prepare_data_for_bw(df):
+def prepare_data_for_bw(df, log_callback):
     df_bw = df.copy()
     df_bw["Sentiment"] = df_bw[
         "Sentiment"
     ].str.lower()  # Convert sentiment values to lowercase for api
-    
+
     # if any mentions have a sentiment value that Is NOT: "positive", "negative", or "neutral", remove them from df before upload
     df_bw = df_bw[df_bw["Sentiment"].isin(["positive", "negative", "neutral"])]
+    # log removed mentions only if there are any
+    if len(df) != len(df_bw):
+        removed_mentions = len(df) - len(df_bw)
+        log_callback(
+            f"Removed {removed_mentions} mentions with invalid sentiment values before uploading to Brandwatch."
+        )
 
-    if 'BW_Tags' in df_bw.columns:
-        df_bw['addTag'] = df_bw['BW_Tags'].apply(lambda x: x.split(',') if pd.notna(x) else [])
-        df_bw = df_bw.drop(columns=['BW_Tags'])
+    if "BW_Tags" in df_bw.columns:
+        log_callback(
+            "Adding sentiment tags to company mentions before uploading to Brandwatch..."
+        )
+        df_bw["addTag"] = df_bw["BW_Tags"].apply(
+            lambda x: x.split(",") if pd.notna(x) and x else []
+        )
+        df_bw = df_bw.drop(columns=["BW_Tags"])
 
     if "Date" in df_bw.columns:
         df_bw["Date"] = (
@@ -89,10 +100,10 @@ def prepare_data_for_bw(df):
 
 def create_dict_list(df_bw):
     base_columns = ["Query Id", "Resource Id", "Sentiment", "Checked"]
-    
+
     if "Date" in df_bw.columns:
         base_columns.append("Date")
-    
+
     sentiment_dicts = (
         df_bw[base_columns]
         .rename(
@@ -107,11 +118,11 @@ def create_dict_list(df_bw):
         .to_dict("records")
     )
 
-    # Only add 'addTag' if it exists and is not empty
-    if 'BW_Tags' in df_bw.columns:
+    # Add 'addTag' to dictionaries where it exists and is not empty
+    if "addTag" in df_bw.columns:
         for i, row in df_bw.iterrows():
-            if pd.notna(row['BW_Tags']) and row['BW_Tags']:
-                sentiment_dicts[i]['addTag'] = row['BW_Tags'].split(',')
+            if row["addTag"]:
+                sentiment_dicts[i]["addTag"] = row["addTag"]
 
     return sentiment_dicts
 
