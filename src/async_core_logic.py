@@ -299,7 +299,7 @@ def calculate_token_count(df, system_prompt, user_prompt, user_prompt2, model, l
     df.drop(invalid_rows, inplace=True)
     
     df["Token Count"] = df["Full Text"].apply(
-        lambda tweet: len(ENCODING.encode(tweet)) + prompt_token_count + 2
+        lambda tweet: len(ENCODING.encode(tweet, allowed_special={"<|endoftext|>"})) + prompt_token_count + 2
     )
 
 def calculate_batch_size(df, batch_token_limit, batch_requests_limit, start_idx):
