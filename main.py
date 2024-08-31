@@ -6,6 +6,7 @@ import tkinter.font as tkFont
 from tkinter.font import nametofont
 import webbrowser
 
+
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 from ttkbootstrap.utility import enable_high_dpi_awareness
@@ -14,8 +15,10 @@ import pandas as pd
 import darkdetect
 from functools import partial
 
-from src.connector_functions import setup_sentiment_analysis, create_bw_upload_thread
+from src.connector_functions import setup_sentiment_analysis
+from src.bw_upload_only import create_bw_upload_thread
 from src.tkmd import SimpleMarkdownText, HyperlinkManager
+from src.input_config import ConfigManager
 
 
 class SentimentAnalysisApp:
@@ -34,6 +37,8 @@ class SentimentAnalysisApp:
 
         # Create and setup GUI components
         self.create_gui()
+
+        self.config_manager = ConfigManager()
 
     def resource_path(self, relative_path):
         try:
@@ -483,26 +488,32 @@ class SentimentAnalysisApp:
         self.user_prompt_entry.insert(tk.END, "Text:")
 
     def start_sentiment_analysis(self):
+        self.config_manager.update_sentiment_config(
+            input_file=self.input_entry.get(),
+            output_file=self.output_entry.get(),
+            customization_option=self.customization_var.get().strip(),
+            company_entry=self.company_entry.get(),
+            system_prompt=self.system_prompt_entry.get("1.0", tk.END),
+            user_prompt=self.user_prompt_entry.get(),
+            user_prompt2=self.user_prompt_entry2.get(),
+            gpt_model=self.gpt_model_var.get().strip(),
+            update_brandwatch=bool(self.bw_checkbox_var.get()),
+            output_probabilities=bool(self.logprob_checkbox_var.get()),
+            company_column=self.company_column_entry.get(),
+            multi_company_entry=self.multi_company_entry.get("1.0", tk.END),
+            separate_company_analysis=bool(
+                self.separate_company_tags_checkbox_var.get()
+            ),
+        )
+
         self.setup_progress_bar(self.placeholder_frame, self.progress_var)
         self.progress_var.set(0)
         setup_sentiment_analysis(
-            input_file=self.input_entry.get(),
-            output_file=self.output_entry.get(),
+            config=self.config_manager.sentiment_config,
             update_progress_gui=self.update_progress_gui,
             log_message=self.log_message,
             enable_button=self.enable_button,
             disable_button=self.disable_button,
-            customization_option=self.customization_var.get().strip(),
-            company_entry=self.company_entry.get(),
-            system_prompt_entry=self.system_prompt_entry.get("1.0", tk.END),
-            user_prompt_entry=self.user_prompt_entry.get(),
-            user_prompt_entry2=self.user_prompt_entry2.get(),
-            gpt_model=self.gpt_model_var.get(),
-            bw_checkbox_var=self.bw_checkbox_var.get(),
-            logprob_checkbox_var=self.logprob_checkbox_var.get(),
-            company_column=self.company_column_entry.get(),
-            multi_company_entry=self.multi_company_entry.get("1.0", tk.END),
-            separate_company_analysis=self.separate_company_tags_checkbox_var.get(),
         )
 
     def start_bw_upload(self):
