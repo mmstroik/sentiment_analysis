@@ -417,9 +417,13 @@ class SentimentAnalysisApp:
 
     # GUI EVENT HANDLING FUNCTIONS
     def browse_input_file(self):
-        # file type can be excel or csv
         file_path = filedialog.askopenfilename(
-            filetypes=[("Excel Files", "*.xlsx"), ("CSV Files", "*.csv")]
+            filetypes=[
+                ("Input Files", "*.xlsx"),
+                ("Input Files", "*.csv"),
+                ("Excel Files", "*.xlsx"),
+                ("CSV Files", "*.csv"),
+            ]
         )
         self.input_entry.delete(0, tk.END)
         self.input_entry.insert(0, file_path)
