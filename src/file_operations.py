@@ -24,8 +24,11 @@ def read_file(input_file, log_message):
 
 def read_csv_file(input_file, log_message):
     # Read the first 20 rows to check for metadata
-    with open(input_file, "r", encoding="utf-8") as f:
-        first_20_lines = [next(f) for _ in range(20)]
+    try:
+        with open(input_file, "r", encoding="utf-8") as f:
+            first_20_lines = [next(f) for _ in range(20)]
+    except StopIteration:
+        raise ValueError("The csv file is empty or has less than 20 lines.")
 
     # Find the header row
     header_row = None
@@ -72,7 +75,8 @@ def read_excel_file(input_file, log_message):
 def write_file(df, output_file, log_message):
     output_file_extension = os.path.splitext(output_file)[1].lower()
     log_message(f"Saving results to a {output_file_extension}...")
-    df.drop(columns=["Token Count"], inplace=True)
+    if "Token Count" in df.columns:
+        df.drop(columns=["Token Count"], inplace=True)
     if output_file_extension == ".csv":
         df.to_csv(output_file, index=False)
     elif output_file_extension in [".xlsx", ".xls"]:

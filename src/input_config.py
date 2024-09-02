@@ -35,17 +35,17 @@ class ConfigManager:
         if self.sentiment_config is None:
             return
 
+        model_name_mapping = {
+            "GPT-3.5": "gpt-3.5-turbo",
+            "GPT-4o mini": "gpt-4o-mini",
+            "GPT-4o": "gpt-4o",
+        }
         model_limits = {
             "gpt-3.5-turbo": {"token_limit": 5000000, "requests_limit": 5000},
             "gpt-4o": {"token_limit": 1000000, "requests_limit": 5000},
             "gpt-4o-mini": {"token_limit": 5000000, "requests_limit": 5000},
         }
-        model_mapping = {
-            "GPT-3.5": "gpt-3.5-turbo",
-            "GPT-4o mini": "gpt-4o-mini",
-            "GPT-4o": "gpt-4o",
-        }
-        self.sentiment_config.model_name = model_mapping[
+        self.sentiment_config.model_name = model_name_mapping[
             self.sentiment_config.gpt_model
         ]
         self.sentiment_config.batch_token_limit = model_limits[

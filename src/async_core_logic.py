@@ -199,6 +199,8 @@ async def call_openai_async(
     if config.customization_option == "Multi-Company":
         toward_company = f" toward {company}" if company else ""
         system_prompt = config.system_prompt.format(toward_company=toward_company)
+    else:
+        system_prompt = config.system_prompt
 
     payload = {
         "model": config.model_name,
