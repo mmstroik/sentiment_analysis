@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-
+import zipfile
 
 def check_file_paths(input_file, output_file):
     if not input_file or not output_file:
@@ -14,12 +14,15 @@ def check_file_paths(input_file, output_file):
 
 def read_file(input_file, log_message):
     file_extension = os.path.splitext(input_file)[1].lower()
-    if file_extension == ".csv":
+    if file_extension == ".zip":
+        extracted_file = extract_zip_file(input_file, log_message)
+        return read_csv_file(extracted_file, log_message)
+    elif file_extension == ".csv":
         return read_csv_file(input_file, log_message)
     elif file_extension in [".xlsx", ".xls"]:
         return read_excel_file(input_file, log_message)
     else:
-        raise ValueError("Input file must be a .xlsx or .csv.")
+        raise ValueError("Input file must be a .xlsx, .csv, or .zip file.")
 
 
 def read_csv_file(input_file, log_message):
@@ -70,6 +73,28 @@ def read_excel_file(input_file, log_message):
     df = pd.read_excel(input_file, header=full_text_row)
 
     return df
+
+
+def extract_zip_file(zip_path, log_message):
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        # Get the name of the first file in the zip
+        file_list = zip_ref.namelist()
+        if not file_list:
+            raise ValueError("The zip file is empty.")
+        
+        csv_files = [f for f in file_list if f.lower().endswith('.csv')]
+        if not csv_files:
+            raise ValueError("No CSV file found in the zip archive.")
+        
+        csv_file = csv_files[0]
+        log_message(f"Extracting {csv_file} from zip archive...")
+        
+        # Extract to a temporary directory
+        temp_dir = os.path.join(os.path.dirname(zip_path), "temp_extracted")
+        os.makedirs(temp_dir, exist_ok=True)
+        extracted_path = zip_ref.extract(csv_file, temp_dir)
+        
+        return extracted_path
 
 
 def write_file(df, output_file, log_message):

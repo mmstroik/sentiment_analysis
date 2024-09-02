@@ -42,6 +42,7 @@ def setup_sentiment_analysis(
         )
         thread.start()
     except Exception as e:
+        log_message(f"An error occurred: {str(e)}")
         messagebox.showerror("Error", f"An error occurred: {str(e)}")
         enable_button()
 
