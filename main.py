@@ -376,7 +376,7 @@ class SentimentAnalysisApp:
         )
         instructions_text_area.pack(fill=BOTH, expand=True)
 
-        instructions_text = """1. Ensure your input file is a .xlsx and contains a column named "Full Text" or "Content" (default for BW and quorum).
+        instructions_text = """1. Ensure your input file is a .xlsx, .csv, or .zip and contains a "Full Text" or "Content" column(default for BW and quorum).
 * Note: Works with column headers in any of the first 20 rows (BW exports).
 
 2. Click on the "Browse" button next to "Input File" and select the file containing the mentions.
@@ -394,7 +394,7 @@ class SentimentAnalysisApp:
 * Custom: Provide custom system and user prompts
 
 6. (Optional) Select a model:
-* GPT-3.5: Less accurate but much less neutral
+* GPT-3.5 (Legacy): Less accurate but much less neutral
 * GPT-4o mini: Best for larger batches and/or shorter text.
 * GPT-4o: Best for smaller batches and/or long text.
             
