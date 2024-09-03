@@ -17,20 +17,20 @@ RATE_LIMIT_DELAY = 30  # seconds
 async def process_tweets_in_batches(
     config,
     df,
-    update_progress_callback,
-    log_callback,
+    update_progress_gui,
+    log_message,
 ):
-    calculate_token_count(config, df, log_callback)
+    calculate_token_count(config, df, log_message)
     total = len(df)
     processed = 0
     async with ClientSession() as session:
         start_idx = 0
-        update_progress_callback(5)
+        update_progress_gui(5)
         start_time = await main_batch_processing_loop(
             config,
             df,
-            update_progress_callback,
-            log_callback,
+            update_progress_gui,
+            log_message,
             total,
             processed,
             session,
@@ -43,15 +43,15 @@ async def process_tweets_in_batches(
             start_time = await reprocess_errors(
                 config,
                 df,
-                update_progress_callback,
-                log_callback,
+                update_progress_gui,
+                log_message,
                 session,
                 errored_df,
             )
             # if any error still exists, notify the user how many and move on
             errored_df = df[df["Sentiment"].isin(["Error", ""])]
             if not errored_df.empty:
-                log_callback(
+                log_message(
                     f"Still error processing {len(errored_df)} mentions. Contact Milo if persistent."
                 )
     return df, start_time
@@ -60,19 +60,19 @@ async def process_tweets_in_batches(
 async def main_batch_processing_loop(
     config,
     df,
-    update_progress_callback,
-    log_callback,
+    update_progress_gui,
+    log_message,
     total,
     processed,
     session,
     start_idx,
 ):
     while start_idx < len(df):
-        log_callback("Calculating size of next batch...")
+        log_message("Calculating size of next batch...")
         batch_end_idx = calculate_batch_size(
             df, config.batch_token_limit, config.batch_requests_limit, start_idx
         )
-        log_callback(
+        log_message(
             f"Processing batch {start_idx+1}-{batch_end_idx} of {total} mentions..."
         )
         # Set batch index and send requests
@@ -93,27 +93,16 @@ async def main_batch_processing_loop(
         start_time = time.time()
 
         # Handle results
-        for tweet_idx, result in zip(batch.index, results):
-            if isinstance(result, Exception):
-                log_callback(f"Error processing text at row {tweet_idx}: {result}")
-            else:
-                if config.output_probabilities:
-                    sentiment, logprob = result  # unpack the tuple
-                    df.at[tweet_idx, "Sentiment"] = sentiment
-                    prob = math.exp(logprob)
-                    df.at[tweet_idx, "Probs"] = prob
-                else:
-                    sentiment = result
-                    df.at[tweet_idx, "Sentiment"] = sentiment
+        handle_batch_results(config, df, log_message, batch, results)
 
         processed += len(results)
-        progress = (processed / total) * 90
-        update_progress_callback(progress)
-        log_callback(f"Progress: Processed {processed} of {total} mentions.")
+        progress = (processed / total) * 80
+        update_progress_gui(progress + 5)
+        log_message(f"Progress: Processed {processed} of {total} mentions.")
         start_idx = batch_end_idx
 
         if start_idx < len(df):
-            log_callback(
+            log_message(
                 f"Waiting {str(RATE_LIMIT_DELAY)} secs for rate limit timer..."
             )
             await timer
@@ -124,12 +113,12 @@ async def main_batch_processing_loop(
 async def reprocess_errors(
     config,
     df,
-    update_progress_callback,
-    log_callback,
+    update_progress_gui,
+    log_message,
     session,
     errored_df,
 ):
-    log_callback(
+    log_message(
         f"Waiting for rate limit timer before reprocessing {len(errored_df)} errored mentions..."
     )
     await asyncio.sleep(RATE_LIMIT_DELAY)  # Wait for 60 seconds before starting
@@ -160,26 +149,14 @@ async def reprocess_errors(
         results = await asyncio.gather(*tasks, return_exceptions=True)
         start_time = time.time()
 
-        # Handle results
-        for tweet_idx, result in zip(batch.index, results):
-            if isinstance(result, Exception):
-                log_callback(f"Error processing text at row {tweet_idx}: {result}")
-            else:
-                if config.output_probabilities:
-                    sentiment, logprob = result  # unpack the tuple
-                    df.at[tweet_idx, "Sentiment"] = sentiment
-                    prob = math.exp(logprob)
-                    df.at[tweet_idx, "Probs"] = prob
-                else:
-                    sentiment = result
-                    df.at[tweet_idx, "Sentiment"] = sentiment
+        handle_batch_results(config, df, log_message, batch, results)
 
         processed_errors += len(results)
-        progress = (processed_errors / total_errors) * 90
-        update_progress_callback(
+        progress = (processed_errors / total_errors) * 80
+        update_progress_gui(
             progress + 5
         )  # Adjust progress callback for error processing
-        log_callback(
+        log_message(
             f"Reprocessed {processed_errors} of {total_errors} errored mentions."
         )
         start_idx = batch_end_idx
@@ -250,8 +227,23 @@ async def call_openai_async(
             return "Error"
 
 
-def calculate_token_count(config, df, log_callback):
-    log_callback("Calculating token counts for each mention...")
+def handle_batch_results(config, df, log_message, batch, results):
+    for tweet_idx, result in zip(batch.index, results):
+        if isinstance(result, Exception):
+            log_message(f"Error processing text at row {tweet_idx}: {result}")
+        else:
+            if config.output_probabilities:
+                sentiment, logprob = result  # unpack the tuple
+                df.at[tweet_idx, "Sentiment"] = sentiment
+                prob = math.exp(logprob)
+                df.at[tweet_idx, "Probs"] = prob
+            else:
+                sentiment = result
+                df.at[tweet_idx, "Sentiment"] = sentiment
+                
+
+def calculate_token_count(config, df, log_message):
+    log_message("Calculating token counts for each mention...")
     full_user_prompt = f'{config.user_prompt} ""\n{config.user_prompt2}'
     ENCODING = tiktoken.encoding_for_model(config.model_name)
     if config.customization_option == "Multi-Company":

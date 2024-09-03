@@ -99,6 +99,7 @@ def process_multi_company(
             f"{unanalyzed_count} mentions will be analyzed without a specific company focus."
         )
     else:
+        log_message("Expanding dataset for separate company analysis...")
         initial_row_count = len(df)
         expanded_df = []
 

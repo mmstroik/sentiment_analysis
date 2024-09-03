@@ -11,8 +11,8 @@ MAX_RETRIES = 5
 MAX_RATE_LIMIT_WAIT_TIME = 600  # 10 minutes in seconds
 
 
-def update_bw_sentiment(df, log_callback):
-    cleaned_sentiment_dicts = prepare_data_for_bw(df, log_callback)
+def update_bw_sentiment(df, update_progress_gui, log_message):
+    cleaned_sentiment_dicts = prepare_data_for_bw(df, log_message)
     chunks = [
         cleaned_sentiment_dicts[i : i + 1360]
         for i in range(0, len(cleaned_sentiment_dicts), 1360)
@@ -24,11 +24,11 @@ def update_bw_sentiment(df, log_callback):
     while i < len(chunks):
         chunk = chunks[i]
         data = json.dumps(chunk)
-        log_callback(f"Sending batch {i+1} of {len(chunks)} to Brandwatch...")
-        result = bw_request(data, log_callback)
+        log_message(f"Sending batch {i+1} of {len(chunks)} to Brandwatch...")
+        result = bw_request(data, log_message)
 
         if result == "RATE_LIMIT_EXCEEDED":
-            log_callback(
+            log_message(
                 f"Rate limit exceeded, pausing for {rate_limit_wait_time/60} minutes..."
             )
             time.sleep(rate_limit_wait_time)
@@ -40,9 +40,9 @@ def update_bw_sentiment(df, log_callback):
         elif result == "TRANSIENT_ERROR":
             retries += 1
             if retries > MAX_RETRIES:
-                log_callback("Maximum number of retries reached. Exiting...")
+                log_message("Maximum number of retries reached. Exiting...")
                 break
-            log_callback(
+            log_message(
                 "Transient error occurred, pausing for 1 minute before retrying..."
             )
             time.sleep(60)
@@ -52,13 +52,15 @@ def update_bw_sentiment(df, log_callback):
             break
 
         total_sent += len(chunk)
-        log_callback(
+        log_message(
             f"Progress: Updated {total_sent} of {len(cleaned_sentiment_dicts)} mentions in Brandwatch."
         )
+        progress = (total_sent / len(cleaned_sentiment_dicts)) * 10
+        update_progress_gui(progress + 85)
         i += 1
 
 
-def prepare_data_for_bw(df, log_callback):
+def prepare_data_for_bw(df, log_message):
     df_bw = df.copy()
     df_bw["Sentiment"] = df_bw[
         "Sentiment"
@@ -69,12 +71,12 @@ def prepare_data_for_bw(df, log_callback):
     # log removed mentions only if there are any
     if len(df) != len(df_bw):
         removed_mentions = len(df) - len(df_bw)
-        log_callback(
+        log_message(
             f"Removed {removed_mentions} mentions with invalid sentiment values before uploading to Brandwatch."
         )
 
     if "BW_Tags" in df_bw.columns:
-        log_callback(
+        log_message(
             "Adding sentiment tags to company mentions before uploading to Brandwatch..."
         )
         df_bw["addTag"] = df_bw["BW_Tags"].apply(
@@ -127,7 +129,7 @@ def create_dict_list(df_bw):
     return sentiment_dicts
 
 
-def bw_request(data, log_callback):
+def bw_request(data, log_message):
     time.sleep(0.5)
 
     headers = {
@@ -143,13 +145,13 @@ def bw_request(data, log_callback):
     try:
         response_json = response.json()
     except ValueError:
-        log_callback(
+        log_message(
             f"ERROR: Error updating sentiment values in Brandwatch: \n{response.text}"
         )
         return False
 
     if "errors" in response_json and response_json["errors"]:
-        log_callback(
+        log_message(
             f"ERROR: Error updating sentiment values in Brandwatch: \n{response_json['errors']}"
         )
         return False

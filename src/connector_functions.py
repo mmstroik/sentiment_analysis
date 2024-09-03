@@ -135,7 +135,7 @@ def run_sentiment_analysis_thread(
 
     if config.update_brandwatch:
         log_message(f"-------\nUpdating sentiment values in Brandwatch...")
-        bw_api_handling.update_bw_sentiment(df, log_message)
+        bw_api_handling.update_bw_sentiment(df, update_progress_gui, log_message)
 
     update_progress_gui(100)
     log_message("Sentiment analysis completed successfully.")
