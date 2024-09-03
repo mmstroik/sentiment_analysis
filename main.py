@@ -6,10 +6,11 @@ import tkinter.font as tkFont
 from tkinter.font import nametofont
 import webbrowser
 
-
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 from ttkbootstrap.utility import enable_high_dpi_awareness
+from ttkbootstrap.tooltip import ToolTip
+
 
 import pandas as pd
 import darkdetect
@@ -57,6 +58,7 @@ class SentimentAnalysisApp:
         self.style.configure("Toolbutton", font=("Segoe UI", 12))
         self.style.configure("radios.Toolbutton", font=("Segoe UI", 11), padding=5)
         self.style.configure("run.TButton", font=("Segoe UI", 13))
+        self.style.configure("tooltip.TLabel", font=("Segoe UI", 10))
         self.default_font = tkFont.nametofont("TkDefaultFont")
         self.default_font.configure(family="Segoe UI")
 
@@ -152,6 +154,14 @@ class SentimentAnalysisApp:
             command=self.browse_output_file,
         )
         output_button.pack(side=tk.RIGHT, padx=(10, 0))
+
+        # Add tooltip to the output button
+        ToolTip(
+            output_button,
+            text="Tip: For very large files, use .csv as the output type for better performance.",
+            wraplength=250,
+            delay=100,
+        )
 
         self.warning_label = tk.Label(
             self.sentiment_tab_frame,
@@ -376,7 +386,7 @@ class SentimentAnalysisApp:
         )
         instructions_text_area.pack(fill=BOTH, expand=True)
 
-        instructions_text = """1. Ensure your input file is a .xlsx, .csv, or .zip and contains a "Full Text" or "Content" column(default for BW and quorum).
+        instructions_text = """1. Ensure your input file is a .xlsx or .csv (or .zip containing a .csv) with a "Content" or "Full Text" column (default for BW).
 * Note: Works with column headers in any of the first 20 rows (BW exports).
 
 2. Click on the "Browse" button next to "Input File" and select the file containing the mentions.
