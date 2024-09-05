@@ -1,6 +1,8 @@
 import os
 import pandas as pd
+from io import BytesIO
 import zipfile
+
 
 def check_file_paths(input_file, output_file):
     if not input_file or not output_file:
@@ -54,8 +56,20 @@ def read_csv_file(input_file, log_message):
 
 
 def read_excel_file(input_file, log_message):
-    # Read the first 20 rows
-    df = pd.read_excel(input_file, header=None, nrows=20)
+    try:
+        # Try reading the first 20 rows
+        df = pd.read_excel(input_file, header=None, nrows=20)
+    except IndexError:
+        log_message("IndexError encountered. Attempting to modify styles.xml...")
+        modified_file = modify_styles_xml(input_file)
+        log_message("Modified styles.xml. Attempting to read again...")
+        try:
+            df = pd.read_excel(modified_file, header=None, nrows=20)
+        except Exception as e:
+            log_message(f"Error even after modifying styles.xml: {str(e)}")
+            raise
+    else:
+        modified_file = input_file
 
     # Check for 'Full Text' or 'Content' in first 20 rows
     if "Full Text" in df.iloc[:20].values:
@@ -69,10 +83,35 @@ def read_excel_file(input_file, log_message):
             "The input file does not contain the required column 'Full Text' or 'Content'."
         )
 
-    # read the full file, skipping rows above the column names
-    df = pd.read_excel(input_file, header=full_text_row)
+    df = pd.read_excel(modified_file, header=full_text_row)
 
     return df
+
+
+def modify_styles_xml(excel_file):
+    with zipfile.ZipFile(excel_file, 'r') as zip_ref:
+        styles_content = zip_ref.read('xl/styles.xml')
+    
+    styles_str = styles_content.decode('utf-8')
+    if '<cellStyleXfs' not in styles_str:
+        insert_pos = styles_str.index('<cellXfs')
+        cellStyleXfs = '''<cellStyleXfs count="1">
+        <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
+    </cellStyleXfs>
+    '''
+        modified_styles = styles_str[:insert_pos] + cellStyleXfs + styles_str[insert_pos:]
+        
+        buffer = BytesIO()
+        with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as new_zip:
+            for item in zipfile.ZipFile(excel_file, 'r').infolist():
+                if item.filename == 'xl/styles.xml':
+                    new_zip.writestr(item, modified_styles)
+                else:
+                    new_zip.writestr(item, zipfile.ZipFile(excel_file, 'r').read(item.filename))
+        
+        buffer.seek(0)
+        return buffer
+    return excel_file
 
 
 def extract_zip_file(zip_path, log_message):
