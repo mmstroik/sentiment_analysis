@@ -99,31 +99,21 @@ Contact Milo for any other issues or questions.
 ```bash
 #!/bin/bash
 
-git log --format="%ad%x00%s" --date=format-local:"%Y-%m-%d %H:%M:%S %z" | awk '
+git log --format="%ad%x00%s" --date=short | awk '
   BEGIN { 
     FS = "\0"
-    print "# Changelog" 
+    print "# Sentiment Analysis Tool Github Changelog" 
   }
   {
-    split($1, dt, " ")
-    date = dt[1]
-    time = dt[2]
-    offset = dt[3]
-    
-    # Convert to EST without seconds
-    "date -d \"" $1 "\" \"+%I:%M %p\"" | getline est_time
-    close("date")
-    
-    if (date != prev_date) {
-      if (prev_date != "") print ""
-      prev_date = date
+    if (date != $1) {
+      if (date != "") print ""
+      date = $1
       print "### " date
     }
-    
     message = $2
     gsub(/^[ \t]+|[ \t]+$/, "", message)  # Strip leading and trailing whitespace
     gsub(/\n/, " ", message)              # Replace newlines with spaces
-    print "* " est_time " EST - " message
+    print "* " message
   }
 ' > changelog.md
 ```

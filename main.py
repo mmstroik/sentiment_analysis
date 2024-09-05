@@ -423,17 +423,6 @@ class SentimentAnalysisApp:
                 )
             ),
         )
-        instructions_text_area.insert("end", " \u2022 ")
-        instructions_text_area.insert(
-            "end",
-            "Github Changelog",
-            hyperlink.add(
-                partial(
-                    webbrowser.open,
-                    "https://docs.google.com/document/d/1TgNjmSfzHgsKHmDSvXR_FMXpnNyiYgn8cYymBcvjSAs/edit",
-                )
-            ),
-        )
         instructions_text_area.configure(state="disabled")
 
     # GUI EVENT HANDLING FUNCTIONS
