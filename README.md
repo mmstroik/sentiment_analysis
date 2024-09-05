@@ -15,6 +15,7 @@ The Sentiment Analysis Tool is a GUI-based Python application that uses the Open
   - [Brandwatch Integration](#brandwatch-integration)
   - [**Rate Limits**](#rate-limits)
 - [Troubleshooting](#troubleshooting)
+- [Changelog](#changelog)
 
 ## Basic Usage
 
@@ -92,3 +93,37 @@ If you encounter a different error message, ensure that:
 - You have a stable internet connection, as the tool requires access to the OpenAI API.
 
 Contact Milo for any other issues or questions.
+
+## Changelog
+
+```bash
+#!/bin/bash
+
+git log --format="%ad%x00%s" --date=format-local:"%Y-%m-%d %H:%M:%S %z" | awk '
+  BEGIN { 
+    FS = "\0"
+    print "# Changelog" 
+  }
+  {
+    split($1, dt, " ")
+    date = dt[1]
+    time = dt[2]
+    offset = dt[3]
+    
+    # Convert to EST without seconds
+    "date -d \"" $1 "\" \"+%I:%M %p\"" | getline est_time
+    close("date")
+    
+    if (date != prev_date) {
+      if (prev_date != "") print ""
+      prev_date = date
+      print "### " date
+    }
+    
+    message = $2
+    gsub(/^[ \t]+|[ \t]+$/, "", message)  # Strip leading and trailing whitespace
+    gsub(/\n/, " ", message)              # Replace newlines with spaces
+    print "* " est_time " EST - " message
+  }
+' > changelog.md
+```
