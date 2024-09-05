@@ -1,6 +1,9 @@
 import asyncio
 import math
 import time
+import logging
+from logging.handlers import QueueHandler
+import queue
 
 import pandas as pd
 from aiohttp import ClientSession
@@ -11,6 +14,12 @@ from tiktoken_ext import openai_public
 
 OPENAI_API_KEY = "***REMOVED***"
 RATE_LIMIT_DELAY = 30  # seconds
+
+log_queue = queue.Queue(-1)  # No limit on size
+queue_handler = QueueHandler(log_queue)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+logger.addHandler(queue_handler)
 
 
 # Asynchronously processes tweets in batches (based on token counts)
@@ -121,9 +130,14 @@ async def reprocess_errors(
     log_message(
         f"Waiting for rate limit timer before reprocessing {len(errored_df)} errored mentions..."
     )
+
     await asyncio.sleep(RATE_LIMIT_DELAY)  # Wait for 60 seconds before starting
     await asyncio.sleep(5)
-
+    
+    if len(errored_df) == 1:
+        errored_index = errored_df.index[0] + 2
+        log_message(f"Reprocessing single errored mention at output row {errored_index}")
+        
     total_errors = len(errored_df)
     processed_errors = 0
     start_idx = 0
@@ -172,7 +186,6 @@ async def call_openai_async(
     company: str = None,
     max_retries=6,
 ):
-
     if config.customization_option == "Multi-Company":
         toward_company = f" toward {company}" if company else ""
         system_prompt = config.system_prompt.format(toward_company=toward_company)
@@ -209,22 +222,26 @@ async def call_openai_async(
                     result = await response.json()
                     sentiment = result["choices"][0]["message"]["content"]
                     if config.output_probabilities:
-                        logprob = result["choices"][0]["logprobs"]["content"][0][
-                            "logprob"
-                        ]
+                        logprob = result["choices"][0]["logprobs"]["content"][0]["logprob"]
                         return sentiment.strip(), logprob
                     else:
                         return sentiment.strip()
                 elif attempt < max_retries - 1:
+                    logger.warning(f"Retry attempt {attempt + 1} for tweet: {tweet[:50]}...")
                     await asyncio.sleep(retry_delay)  # Wait before retrying
                     retry_delay += 2
                 else:
                     result = await response.text()
-                    print(result)
+                    logger.error(f"Failed after {max_retries} attempts for tweet: {tweet[:50]}... Error: {result}")
                     return "Error"
         except Exception as e:
-            print(e)
-            return "Error"
+            if attempt < max_retries - 1:
+                logger.warning(f"Retry attempt {attempt + 1} for tweet: {tweet[:50]}... Exception: {str(e)}")
+                await asyncio.sleep(retry_delay)  # Wait before retrying
+                retry_delay += 2
+            else:
+                logger.error(f"Failed after {max_retries} attempts for tweet: {tweet[:50]}... Exception: {str(e)}")
+                return "Error"
 
 
 def handle_batch_results(config, df, log_message, batch, results):
@@ -275,6 +292,9 @@ def calculate_token_count(config, df, log_message):
         + prompt_token_count
         + 2
     )
+    # Calculate and log the total input tokens
+    total_input_tokens = df["Token Count"].sum()
+    log_message(f"Total input tokens: {total_input_tokens}")
 
 
 def calculate_batch_size(df, batch_token_limit, batch_requests_limit, start_idx):
