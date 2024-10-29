@@ -344,13 +344,24 @@ class SentimentAnalysisApp:
         self.sentiment_run_button.pack(pady=(30, 12), side="bottom")
 
     def create_bw_tab_run_button(self):
+        # Add the new label
+        note_label = ttk.Label(
+            self.bw_tab_frame,
+            text="Note: This feature does not code sentiment and is only meant for\n"
+                 "updating BW with already-coded output files.",
+            font=("Segoe UI", 10),
+            justify="center",
+            wraplength=400
+        )
+        note_label.pack(pady=(10, 5))
+
         self.bw_upload_button = ttk.Button(
             self.bw_tab_frame,
             text="Upload to Brandwatch",
             style="run.TButton",
             command=self.start_bw_upload,
         )
-        self.bw_upload_button.pack(pady=(30, 12))
+        self.bw_upload_button.pack(pady=(5, 12))
 
     def create_progress_bar(self):
         self.placeholder_frame = ttk.Frame(self.main_frame, height=11, width=450)
