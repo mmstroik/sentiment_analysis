@@ -626,6 +626,14 @@ class SentimentAnalysisApp:
             command=self.update_max_tokens_label,
         )
         self.max_tokens_scale.pack(pady=(2, 0))
+        self.analyze_images_var = tk.BooleanVar(value=False)
+        self.analyze_images_checkbox = ttk.Checkbutton(
+            advanced_options,
+            text=" Analyze images in posts (GPT-4o and 4o mini only)",
+            variable=self.analyze_images_var,
+            style="Roundtoggle.Toolbutton",
+        )
+        self.analyze_images_checkbox.pack(pady=(15, 0))
 
         # Add dual model section
         self.create_dual_model_section(advanced_options)
@@ -900,6 +908,7 @@ class SentimentAnalysisApp:
             ),
             temperature=float(self.temperature_scale.get()),
             max_tokens=int(self.max_tokens_scale.get()),
+            analyze_images=bool(self.analyze_images_var.get()),
             use_dual_models=bool(self.dual_model_var.get()),
             second_gpt_model=self.second_model_var.get().strip(),
             model_split_percentage=int(self.split_scale_var.get()),

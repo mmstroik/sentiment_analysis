@@ -254,12 +254,10 @@ def calculate_token_count(config, df, log_message):
             ENCODING.encode(config.system_prompt + full_user_prompt)
         )
 
-    # Find rows where 'Full Text' is not a string or is empty
+    # Find and drop rows where 'Full Text' is not a string or is empty
     invalid_rows = df[
         ~df["Full Text"].apply(lambda x: isinstance(x, str) and x.strip() != "")
     ].index
-
-    # Drop these rows from the DataFrame
     df.drop(invalid_rows, inplace=True)
 
     df["Token Count"] = df["Full Text"].apply(
