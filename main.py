@@ -486,8 +486,8 @@ class SentimentAnalysisApp:
             value=0.3,
             command=self.update_temperature_label
         )
-        self.temperature_scale.pack(pady=(2, 0))
-        
+        self.temperature_scale.pack(pady=(1, 0))
+
         # max tokens slider
         self.max_tokens_label = tk.Label(
             self.advanced_frame, text="Max Completion Tokens: 1", font=("Segoe UI", 12)
@@ -504,6 +504,15 @@ class SentimentAnalysisApp:
         )
         self.max_tokens_scale.pack(pady=(2, 0))
         
+        self.analyze_images_var = tk.BooleanVar(value=False)
+        self.analyze_images_checkbox = ttk.Checkbutton(
+            self.advanced_frame,
+            text=" Analyze images in posts (GPT-4o and 4o mini only)",
+            variable=self.analyze_images_var,
+            style="Roundtoggle.Toolbutton",
+        )
+        self.analyze_images_checkbox.pack(pady=(15, 0))
+
     def update_temperature_label(self, value):
         formatted_value = "{:.1f}".format(float(value)) # Round to 1 decimal place for display
         self.temperature_label.config(text=f"Temperature: {formatted_value}")
@@ -615,6 +624,7 @@ class SentimentAnalysisApp:
             ),
             temperature=float(self.temperature_scale.get()),
             max_tokens=int(self.max_tokens_scale.get()),
+            analyze_images=bool(self.analyze_images_var.get()),
         )
 
         self.setup_progress_bar(self.placeholder_frame, self.progress_var)

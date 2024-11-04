@@ -19,6 +19,7 @@ class SentimentAnalysisConfig:
     separate_company_analysis: bool = False
     temperature: float = 0.3
     max_tokens: int = 1
+    analyze_images: bool = False
     model_name: str = field(init=False)
     batch_token_limit: int = field(init=False)
     batch_requests_limit: int = field(init=False)

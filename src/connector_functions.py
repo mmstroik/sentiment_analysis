@@ -21,6 +21,7 @@ def setup_sentiment_analysis(
     enable_button,
     disable_button,
 ):
+    disable_button()
     try:
         file_operations.check_file_paths(config.input_file, config.output_file)
     except ValueError as e:
@@ -29,7 +30,6 @@ def setup_sentiment_analysis(
         enable_button()
         return
 
-    disable_button()
     try:
         thread = threading.Thread(
             target=run_sentiment_analysis_thread,
@@ -104,6 +104,15 @@ def run_sentiment_analysis_thread(
                 log_message("Analysis cancelled by user.")
                 enable_button()
                 return
+        if config.analyze_images:
+            if config.model_name == "gpt-3.5-turbo":
+                log_message("Warning: Image analysis requires GPT-4o or 4o mini.")
+                messagebox.showerror("Error", "Image analysis requires GPT-4o or 4o mini.")
+                enable_button()
+                return
+            if "Media URLs" not in df.columns:
+                log_message("Warning: Media URLs column not found. Skipping image analysis.")
+                config.analyze_images = False
 
         log_message(f"Starting sentiment analysis with {config.model_name}...")
         loop = asyncio.new_event_loop()
