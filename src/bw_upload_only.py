@@ -60,7 +60,7 @@ def setup_bw_upload(
         return
 
     log_message(f"Updating sentiment values in Brandwatch...")
-    bw_api_handling.update_bw_sentiment(df, log_message)
+    bw_api_handling.update_bw_sentiment(df, update_progress_gui, log_message)
     update_progress_gui(98)
     update_progress_gui(100)
     messagebox.showinfo("Success", "Brandwatch upload completed successfully.")
