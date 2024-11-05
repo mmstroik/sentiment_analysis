@@ -2,6 +2,7 @@ import requests
 import json
 import time
 import pandas as pd
+from requests.exceptions import ChunkedEncodingError, RequestException
 
 API_TOKEN = "***REMOVED***"
 URL = "https://api.brandwatch.com/projects/***REMOVED***/data/mentions"
@@ -9,13 +10,15 @@ URL = "https://api.brandwatch.com/projects/***REMOVED***/data/mentions"
 TRANSIENT_ERROR_CODES = [502, 503, 504, 408]
 MAX_RETRIES = 5
 MAX_RATE_LIMIT_WAIT_TIME = 600  # 10 minutes in seconds
+BATCH_SIZE = 1360
+TIMEOUT_ERROR_CODE = 100
 
 
 def update_bw_sentiment(df, update_progress_gui, log_message):
     cleaned_sentiment_dicts = prepare_data_for_bw(df, log_message)
     chunks = [
-        cleaned_sentiment_dicts[i : i + 1360]
-        for i in range(0, len(cleaned_sentiment_dicts), 1360)
+        cleaned_sentiment_dicts[i : i + BATCH_SIZE]
+        for i in range(0, len(cleaned_sentiment_dicts), BATCH_SIZE)
     ]
     total_sent = 0
     i = 0
@@ -37,15 +40,16 @@ def update_bw_sentiment(df, update_progress_gui, log_message):
             )  # Double wait time for the next retry, up to 10 minutes
             continue  # retry the same chunk
 
-        elif result == "TRANSIENT_ERROR":
+        elif result == "TIMEOUT_ERROR" or result == "TRANSIENT_ERROR":
             retries += 1
             if retries > MAX_RETRIES:
                 log_message("Maximum number of retries reached. Exiting...")
                 break
+            wait_time = 60 * (2 ** (retries - 1))  # Exponential backoff
             log_message(
-                "Transient error occurred, pausing for 1 minute before retrying..."
+                f"{'Timeout' if result == 'TIMEOUT_ERROR' else 'Transient'} error occurred, pausing for {wait_time/60} minutes before retrying..."
             )
-            time.sleep(60)
+            time.sleep(wait_time)
             continue  # retry the same chunk
 
         elif not result:
@@ -137,23 +141,28 @@ def bw_request(data, log_message):
         "Content-type": "application/json",
     }
 
-    response = requests.patch(URL, data=data, headers=headers)
-    if response.status_code == 429:
-        return "RATE_LIMIT_EXCEEDED"
-    elif response.status_code in TRANSIENT_ERROR_CODES:
-        return "TRANSIENT_ERROR"
     try:
-        response_json = response.json()
-    except ValueError:
-        log_message(
-            f"ERROR: Error updating sentiment values in Brandwatch: \n{response.text}"
-        )
-        return False
+        response = requests.patch(URL, data=data, headers=headers)
+        if response.status_code == 429:
+            return "RATE_LIMIT_EXCEEDED"
+        elif response.status_code in TRANSIENT_ERROR_CODES:
+            return "TRANSIENT_ERROR"
+        
+        try:
+            response_json = response.json()
+        except ValueError:
+            log_message(f"ERROR: Error updating sentiment values in Brandwatch: \n{response.text}")
+            return False
 
-    if "errors" in response_json and response_json["errors"]:
-        log_message(
-            f"ERROR: Error updating sentiment values in Brandwatch: \n{response_json['errors']}"
-        )
-        return False
+        if "errors" in response_json and response_json["errors"]:
+            for error in response_json["errors"]:
+                if error.get("code") == TIMEOUT_ERROR_CODE:
+                    return "TIMEOUT_ERROR"
+            log_message(f"ERROR: Error updating sentiment values in Brandwatch: \n{response_json['errors']}")
+            return False
 
-    return True
+        return True
+
+    except (ChunkedEncodingError, RequestException) as e:
+        log_message(f"Connection error: {str(e)}")
+        return "TRANSIENT_ERROR"

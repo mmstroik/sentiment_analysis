@@ -7,3 +7,5 @@ build/
 __pycache__/
 src/__init__.py
 src/bw_upload_only.py
+changelog.md
+.gitignore
