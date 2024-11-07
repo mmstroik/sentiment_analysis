@@ -18,7 +18,17 @@ def read_file(input_file, log_message):
     file_extension = os.path.splitext(input_file)[1].lower()
     if file_extension == ".zip":
         extracted_file = extract_zip_file(input_file, log_message)
-        return read_csv_file(extracted_file, log_message)
+        try:
+            df = read_csv_file(extracted_file, log_message)
+        finally:
+            # Clean up the temporary directory
+            temp_dir = os.path.dirname(extracted_file)
+            if os.path.exists(extracted_file):
+                os.remove(extracted_file)
+            if os.path.exists(temp_dir):
+                os.rmdir(temp_dir)
+            log_message("Cleaned up temporary extraction files")
+        return df
     elif file_extension == ".csv":
         return read_csv_file(input_file, log_message)
     elif file_extension in [".xlsx", ".xls"]:

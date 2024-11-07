@@ -6,3 +6,5 @@ build/
 dist/
 README.html
 src/__pycache__/
+.cursorignore
+.cursorrules
