@@ -19,4 +19,4 @@ Core modules:
 - bw_api_handling.py: Brandwatch API integration
 - bw_upload_only.py: Standalone Brandwatch upload workflow
 
-Uses threading for GUI non-blocking operations and asyncio for OpenAI API calls.
+Uses threading for GUI non-blocking operations and asyncio for OpenAI API calls (using aiohttp requests, not the OpenAI Python SDK).
