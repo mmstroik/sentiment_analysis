@@ -22,7 +22,7 @@ def setup_multi_company(df, company_column, multi_company_entry, log_message):
 def create_company_column(df, company_column, multi_company_entry):
     companies = [company.strip() for company in multi_company_entry.split(",")]
     company_columns = [
-        col for col in df.columns if col.startswith(f"{company_column} - ")
+        col for col in df.columns if col.startswith(f"{company_column} - ") and col[len(company_column)+3:] in companies
     ]
 
     if not company_columns:
@@ -33,9 +33,9 @@ def create_company_column(df, company_column, multi_company_entry):
     company_mentions = []
     for _, row in df.iterrows():
         mentioned_companies = [
-            col.split(" - ", 1)[1]
+            col[len(company_column)+3:]
             for col in company_columns
-            if row[col] == "X" and col.split(" - ", 1)[1] in companies
+            if row[col] == "X" and col[len(company_column)+3:] in companies
         ]
         company_mentions.append(",".join(mentioned_companies))
 
