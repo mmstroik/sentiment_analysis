@@ -63,6 +63,7 @@ def setup_bw_upload(
         bw_api_handling.update_bw_sentiment(df, update_progress_gui, log_message)
         update_progress_gui(98)
         update_progress_gui(100)
+        log_message("Brandwatch upload completed successfully.")
         messagebox.showinfo("Success", "Brandwatch upload completed successfully.")
         enable_button()
         return

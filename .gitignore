@@ -9,3 +9,5 @@ src/__pycache__/
 .cursorignore
 .cursorrules
 src/api_response_logs/
+*.csv
+samplefromcsv.py
