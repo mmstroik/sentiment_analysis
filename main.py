@@ -452,8 +452,8 @@ class SentimentAnalysisApp:
 
     def browse_output_file(self):
         file_path = filedialog.asksaveasfilename(
-            defaultextension=".xlsx",
-            filetypes=[("Excel Files", "*.xlsx"), ("CSV Files", "*.csv")],
+            defaultextension=".csv",
+            filetypes=[("CSV Files", "*.csv"), ("Excel Files", "*.xlsx")],
         )
         self.output_entry.delete(0, tk.END)
         self.output_entry.insert(0, file_path)
