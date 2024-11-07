@@ -349,10 +349,10 @@ class SentimentAnalysisApp:
         note_label = ttk.Label(
             self.bw_tab_frame,
             text="Note: This feature does not code sentiment and is only meant for\n"
-                 "updating BW with already-coded output files.",
+            "updating BW with already-coded output files.",
             font=("Segoe UI", 10),
             justify="center",
-            wraplength=400
+            wraplength=400,
         )
         note_label.pack(pady=(10, 5))
 
@@ -453,7 +453,7 @@ class SentimentAnalysisApp:
                 ("Excel Files", "*.xlsx"),
                 ("CSV Files", "*.csv"),
                 ("Zip Files", "*.zip"),
-            ]
+            ],
         )
         self.input_entry.delete(0, tk.END)
         self.input_entry.insert(0, file_path)
@@ -560,8 +560,13 @@ class SentimentAnalysisApp:
             enable_button=self.enable_button,
             disable_button=self.disable_button,
         )
+
     def start_metrics_analysis(self):
-        analyze_api_metrics(log_message=self.log_message)
+        analyze_api_metrics(
+            log_message=self.log_message,
+            enable_button=self.enable_button,
+            disable_button=self.disable_button,
+        )
 
     def setup_progress_bar(self, placeholder_frame, progress_var):
         if not hasattr(placeholder_frame, "progress_bar"):
@@ -597,10 +602,12 @@ class SentimentAnalysisApp:
     def enable_button(self):
         self.sentiment_run_button.config(state=tk.NORMAL)
         self.bw_upload_button.config(state=tk.NORMAL)
+        self.bw_api_metrics_button.config(state=tk.NORMAL)
 
     def disable_button(self):
         self.sentiment_run_button.config(state=tk.DISABLED)
         self.bw_upload_button.config(state=tk.DISABLED)
+        self.bw_api_metrics_button.config(state=tk.DISABLED)
 
 
 if __name__ == "__main__":

@@ -3,19 +3,15 @@ import glob
 import pandas as pd
 import sys
 
-def analyze_api_metrics(log_message, log_dir="api_response_logs", days=7):
+def analyze_api_metrics(log_message, enable_button, disable_button, log_dir="api_response_logs", days=7):
     # Get the application's base directory
+    disable_button()
     if getattr(sys, 'frozen', False):
         # Running as compiled exe
         base_dir = os.path.dirname(sys.executable)
     else:
-        # Running as script - get project root directory
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        # Go up one level if we're in the src directory
-        if os.path.basename(current_dir) == 'src':
-            base_dir = os.path.dirname(current_dir)
-        else:
-            base_dir = current_dir
+        # Running as script
+        base_dir = os.path.dirname(os.path.abspath(__file__))
 
     log_dir = os.path.join(base_dir, log_dir)
     log_message(f"Looking for logs in: {log_dir}")  # Debug line
@@ -64,6 +60,6 @@ def analyze_api_metrics(log_message, log_dir="api_response_logs", days=7):
     log_message("\nDaily Metrics (last 5 days):")
     for date, row in daily_stats.tail().iterrows():
         log_message(f"{date}: Success Rate={row['Success Rate %']}%, Avg Response Time={row['Avg Response Time']:.2f}s")
-    
+    enable_button()
     return df
 

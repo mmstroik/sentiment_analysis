@@ -167,8 +167,6 @@ def log_api_response(status, response_time, response_code=None, data=None, error
         df.to_csv(log_file, index=False)
     
     return response_data
-
-
 def bw_request(data, log_message):
     time.sleep(0.5)
     start_time = time.time()
@@ -232,3 +230,4 @@ def bw_request(data, log_message):
         print(f"response time for connection error: {response_time} seconds")
         log_message(f"Connection error: {str(e)}")
         return "TRANSIENT_ERROR"
+
