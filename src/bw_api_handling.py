@@ -143,27 +143,32 @@ def bw_request(data, log_message):
 
     try:
         response = requests.patch(URL, data=data, headers=headers)
-        # Print full response details for debugging
-        print(f"\nResponse Status Code: {response.status_code}")
-        print(f"Response Headers: {response.headers}")
-        print(f"Raw Response Text: {response.text}\n")
 
         if response.status_code == 429:
-            print(f"Rate Limit Details: {response.headers.get('X-RateLimit-Remaining', 'N/A')} requests remaining")
+            print(f"\nRate Limit Details:")
+            print(f"Status Code: {response.status_code}")
+            print(f"Headers: {response.headers}")
+            print(f"Remaining Requests: {response.headers.get('X-RateLimit-Remaining', 'N/A')}")
             return "RATE_LIMIT_EXCEEDED"
+            
         elif response.status_code in TRANSIENT_ERROR_CODES:
-            print(f"Transient Error Details - Status: {response.status_code}, Response: {response.text}")
+            print(f"\nTransient Error Details:")
+            print(f"Status Code: {response.status_code}")
+            print(f"Response: {response.text}")
             return "TRANSIENT_ERROR"
         
         try:
             response_json = response.json()
-            print(f"Parsed JSON Response: {json.dumps(response_json, indent=2)}")
         except ValueError:
-            print(f"JSON Parsing Error - Raw Response: {response.text}")
+            print(f"\nJSON Parsing Error:")
+            print(f"Status Code: {response.status_code}")
+            print(f"Raw Response: {response.text}")
             log_message(f"ERROR: Error updating sentiment values in Brandwatch: \n{response.text}")
             return False
 
         if "errors" in response_json and response_json["errors"]:
+            print(f"\nAPI Error Details:")
+            print(f"Status Code: {response.status_code}")
             print(f"Full Error Response: {json.dumps(response_json, indent=2)}")
             for error in response_json["errors"]:
                 if error.get("code") == TIMEOUT_ERROR_CODE:
@@ -174,7 +179,10 @@ def bw_request(data, log_message):
         return True
 
     except (ChunkedEncodingError, RequestException) as e:
-        print(f"Full Exception Details: {str(e)}")
+        print(f"\nConnection Error Details:")
         print(f"Exception Type: {type(e).__name__}")
+        print(f"Full Exception: {str(e)}")
+        print(f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"Batch Size: {len(json.loads(data))}")  # Add batch size info
         log_message(f"Connection error: {str(e)}")
         return "TRANSIENT_ERROR"
