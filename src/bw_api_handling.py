@@ -1,8 +1,11 @@
+import os
+from datetime import datetime
 import requests
 import json
 import time
 import pandas as pd
 from requests.exceptions import ChunkedEncodingError, RequestException
+import sys
 
 API_TOKEN = "***REMOVED***"
 URL = "https://api.brandwatch.com/projects/***REMOVED***/data/mentions"
@@ -133,9 +136,42 @@ def create_dict_list(df_bw):
     return sentiment_dicts
 
 
+def log_api_response(status, response_time, response_code=None, data=None, error=None, log_dir="api_response_logs"):
+    # Get the application's base directory
+    if getattr(sys, 'frozen', False):
+        # Running as compiled exe
+        base_dir = os.path.dirname(sys.executable)
+    else:
+        # Running as script
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    log_dir = os.path.join(base_dir, "api_response_logs")
+    os.makedirs(log_dir, exist_ok=True)
+    
+    log_file = os.path.join(log_dir, f"bw_api_metrics_{datetime.now().strftime('%Y_%m')}.csv")
+    
+    response_data = {
+        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'status': status,  # 'success', 'rate_limit', 'timeout', 'error', etc.
+        'response_time': response_time,
+        'response_code': response_code,
+        'batch_size': len(json.loads(data)) if data else 0,
+        'error_type': type(error).__name__ if error else None,
+        'error_message': str(error) if error else None
+    }
+    
+    df = pd.DataFrame([response_data])
+    if os.path.exists(log_file):
+        df.to_csv(log_file, mode='a', header=False, index=False)
+    else:
+        df.to_csv(log_file, index=False)
+    
+    return response_data
+
+
 def bw_request(data, log_message):
     time.sleep(0.5)
-
+    start_time = time.time()
     headers = {
         "Authorization": f"Bearer {API_TOKEN}",
         "Content-type": "application/json",
@@ -143,18 +179,21 @@ def bw_request(data, log_message):
 
     try:
         response = requests.patch(URL, data=data, headers=headers)
+        response_time = time.time() - start_time
 
         if response.status_code == 429:
             print(f"\nRate Limit Details:")
             print(f"Status Code: {response.status_code}")
             print(f"Headers: {response.headers}")
             print(f"Remaining Requests: {response.headers.get('X-RateLimit-Remaining', 'N/A')}")
+            log_api_response('rate_limit', response_time, response.status_code, data)
             return "RATE_LIMIT_EXCEEDED"
             
         elif response.status_code in TRANSIENT_ERROR_CODES:
             print(f"\nTransient Error Details:")
             print(f"Status Code: {response.status_code}")
             print(f"Response: {response.text}")
+            log_api_response('transient', response_time, response.status_code, data)
             return "TRANSIENT_ERROR"
         
         try:
@@ -163,6 +202,7 @@ def bw_request(data, log_message):
             print(f"\nJSON Parsing Error:")
             print(f"Status Code: {response.status_code}")
             print(f"Raw Response: {response.text}")
+            log_api_response('json_error', response_time, response.status_code, data)
             log_message(f"ERROR: Error updating sentiment values in Brandwatch: \n{response.text}")
             return False
 
@@ -172,17 +212,23 @@ def bw_request(data, log_message):
             print(f"Full Error Response: {json.dumps(response_json, indent=2)}")
             for error in response_json["errors"]:
                 if error.get("code") == TIMEOUT_ERROR_CODE:
+                    log_api_response('timeout', response_time, response.status_code, data)
                     return "TIMEOUT_ERROR"
+            log_api_response('api_error', response_time, response.status_code, data)
             log_message(f"ERROR: Error updating sentiment values in Brandwatch: \n{response_json['errors']}")
             return False
 
+        # Log successful response
+        log_api_response('success', response_time, response.status_code, data)
+        print(f"response time for successful request: {response_time} seconds")
         return True
 
     except (ChunkedEncodingError, RequestException) as e:
+        response_time = time.time() - start_time
+        log_api_response('connection_error', response_time, error=e, data=data)
         print(f"\nConnection Error Details:")
         print(f"Exception Type: {type(e).__name__}")
         print(f"Full Exception: {str(e)}")
-        print(f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"Batch Size: {len(json.loads(data))}")  # Add batch size info
+        print(f"response time for connection error: {response_time} seconds")
         log_message(f"Connection error: {str(e)}")
         return "TRANSIENT_ERROR"

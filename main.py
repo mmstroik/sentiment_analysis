@@ -20,6 +20,7 @@ from src.connector_functions import setup_sentiment_analysis
 from src.bw_upload_only import create_bw_upload_thread
 from src.tkmd import SimpleMarkdownText, HyperlinkManager
 from src.input_config import ConfigManager
+from src.metrics import analyze_api_metrics
 
 
 class SentimentAnalysisApp:
@@ -362,6 +363,13 @@ class SentimentAnalysisApp:
             command=self.start_bw_upload,
         )
         self.bw_upload_button.pack(pady=(5, 12))
+        self.bw_api_metrics_button = ttk.Button(
+            self.bw_tab_frame,
+            text="Get BW API Metrics",
+            style="run.TButton",
+            command=self.start_metrics_analysis,
+        )
+        self.bw_api_metrics_button.pack(pady=(20, 12))
 
     def create_progress_bar(self):
         self.placeholder_frame = ttk.Frame(self.main_frame, height=11, width=450)
@@ -552,6 +560,8 @@ class SentimentAnalysisApp:
             enable_button=self.enable_button,
             disable_button=self.disable_button,
         )
+    def start_metrics_analysis(self):
+        analyze_api_metrics(log_message=self.log_message)
 
     def setup_progress_bar(self, placeholder_frame, progress_var):
         if not hasattr(placeholder_frame, "progress_bar"):

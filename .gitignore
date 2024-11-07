@@ -8,3 +8,4 @@ README.html
 src/__pycache__/
 .cursorignore
 .cursorrules
+api_response_logs/
