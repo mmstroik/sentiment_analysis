@@ -3,7 +3,6 @@ README.md
 pie_icon.ico
 src/tkmd.py
 build/
-.cursorignore
 __pycache__/
 src/__init__.py
 src/bw_upload_only.py

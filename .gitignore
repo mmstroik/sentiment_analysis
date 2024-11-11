@@ -1,12 +1,9 @@
 mmstr.sentiment-workspace.code-workspace
 Sentiment-Analysis.spec
 Sentiment-Analysis-Tool.spec
-read_protected_excel.py
 build/
 dist/
-README.html
 src/__pycache__/
-.cursorignore
 .cursorrules
 src/api_response_logs/
 *.csv
