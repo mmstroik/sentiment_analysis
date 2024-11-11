@@ -7,9 +7,9 @@ import aiohttp
 import pandas as pd
 
 from . import metrics
-from .secrets.keys import BW_API_KEY
+from .secrets.keys import BW_API_KEY, PROJECT_ID
 
-URL = "https://api.brandwatch.com/projects/***REMOVED***/data/mentions"
+URL = f"https://api.brandwatch.com/projects/{PROJECT_ID}/data/mentions"
 
 TRANSIENT_ERROR_CODES = [502, 503, 504, 408]
 MAX_RETRIES = 5
