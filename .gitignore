@@ -4,8 +4,8 @@ Sentiment-Analysis-Tool.spec
 build/
 dist/
 src/__pycache__/
-.cursorrules
 src/api_response_logs/
 *.csv
 samplefromcsv.py
 queryconvert*.py
+.cursorrules
