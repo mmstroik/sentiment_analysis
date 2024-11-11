@@ -5,9 +5,9 @@ import pandas as pd
 import requests
 from requests.exceptions import ChunkedEncodingError, RequestException
 
-from src import metrics
+from . import metrics
+from .secrets.keys import BW_API_KEY
 
-API_TOKEN = "***REMOVED***"
 URL = "https://api.brandwatch.com/projects/***REMOVED***/data/mentions"
 
 TRANSIENT_ERROR_CODES = [502, 503, 504, 408]

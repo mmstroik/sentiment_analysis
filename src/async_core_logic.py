@@ -12,7 +12,8 @@ import tiktoken
 import tiktoken_ext
 from tiktoken_ext import openai_public
 
-OPENAI_API_KEY = "***REMOVED***"
+from .secrets.keys import OPENAI_API_KEY
+
 RATE_LIMIT_DELAY = 30  # seconds
 
 log_queue = queue.Queue(-1)  # No limit on size
