@@ -134,10 +134,10 @@ class SentimentAnalysisApp:
         self.notebook.pack(expand=True, fill=tk.BOTH)
 
         self.sentiment_tab_frame = tk.Frame(self.notebook)
-        self.notebook.add(self.sentiment_tab_frame, text="Sentiment Analysis")
+        self.notebook.add(self.sentiment_tab_frame, text="Sentiment Analysis", padding=[15, 5, 15, 5])
 
         self.bw_tab_frame = tk.Frame(self.notebook)
-        self.notebook.add(self.bw_tab_frame, text="BW Upload Only")
+        self.notebook.add(self.bw_tab_frame, text="BW Upload Only", padding=[15, 5, 15, 5])
 
     def create_sentiment_tab(self):
         self.create_output_section()
@@ -158,7 +158,7 @@ class SentimentAnalysisApp:
         self.output_entry = tk.Entry(
             output_frame, textvariable=self.output_var, width=50, font=("Segoe UI", 11)
         )
-        self.output_entry.pack(side=tk.RIGHT, padx=(0, 10))
+        self.output_entry.pack(side=tk.RIGHT)
 
         output_button = tk.Button(
             output_frame,
@@ -166,7 +166,7 @@ class SentimentAnalysisApp:
             font=("Segoe UI", 11),
             command=self.browse_output_file,
         )
-        output_button.pack(side=tk.RIGHT, padx=(10, 0))
+        output_button.pack(side=tk.RIGHT)
 
         # Add tooltip to the output button
         ToolTip(
@@ -235,17 +235,6 @@ class SentimentAnalysisApp:
     def create_multi_company_section(self):
         self.multi_company_frame = tk.Frame(self.sentiment_tab_frame)
 
-        separate_company_tags_checkbox_frame = tk.Frame(self.multi_company_frame)
-        separate_company_tags_checkbox = ttk.Checkbutton(
-            separate_company_tags_checkbox_frame,
-            variable=self.separate_company_tags_checkbox_var,
-            style="Roundtoggle.Toolbutton",
-        )
-        separate_company_tags_checkbox_label = tk.Label(
-            separate_company_tags_checkbox_frame,
-            text=" Separately code sentiment toward each company\n  mentioned in a post (adds BW tag for each company)",
-            font=("Segoe UI", 12),
-        )
         company_column_label = tk.Label(
             self.multi_company_frame,
             text="Company column (BW parent category):",
@@ -262,18 +251,31 @@ class SentimentAnalysisApp:
         )
         self.multi_company_entry = tk.Text(
             self.multi_company_frame,
-            width=50,
+            width=55,
             height=2,
             font=("Segoe UI", 11),
             wrap=tk.WORD,
         )
-        separate_company_tags_checkbox_frame.pack()
-        separate_company_tags_checkbox.pack(side=tk.LEFT)
-        separate_company_tags_checkbox_label.pack(side=tk.LEFT)
-        company_column_label.pack(pady=(10, 0))
+        
+        separate_company_tags_checkbox_frame = tk.Frame(self.multi_company_frame)
+        separate_company_tags_checkbox = ttk.Checkbutton(
+            separate_company_tags_checkbox_frame,
+            variable=self.separate_company_tags_checkbox_var,
+            style="Roundtoggle.Toolbutton",
+        )
+        separate_company_tags_checkbox_label = tk.Label(
+            separate_company_tags_checkbox_frame,
+            text=" Separately code sentiment toward each company\n  mentioned in a post (adds BW tag for each company)",
+            font=("Segoe UI", 12),
+        )
+
+        company_column_label.pack(pady=(0, 0))
         self.company_column_entry.pack(pady=(1, 0))
         multi_company_label.pack(pady=(8, 0))
         self.multi_company_entry.pack(pady=(1, 0))
+        separate_company_tags_checkbox_frame.pack(pady=(10, 0))
+        separate_company_tags_checkbox.pack(side=tk.LEFT)
+        separate_company_tags_checkbox_label.pack(side=tk.LEFT)
 
     def create_custom_prompt_section(self):
         self.system_prompt_frame = tk.Frame(self.sentiment_tab_frame)
