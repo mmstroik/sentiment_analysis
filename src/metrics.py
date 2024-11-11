@@ -73,45 +73,47 @@ def log_api_response(
     error=None,
     log_dir="api_response_logs",
 ):
-    # Get the application's base directory
-    if getattr(sys, "frozen", False):
-        # Running as compiled exe
-        base_dir = os.path.dirname(sys.executable)
-    else:
-        # Running as script
-        base_dir = os.path.dirname(os.path.abspath(__file__))
+    try:
+        if getattr(sys, "frozen", False):
+            # Running as compiled exe
+            base_dir = os.path.dirname(sys.executable)
+        else:
+            # Running as script
+            base_dir = os.path.dirname(os.path.abspath(__file__))
 
-    log_dir = os.path.join(base_dir, "api_response_logs")
-    os.makedirs(log_dir, exist_ok=True)
+        log_dir = os.path.join(base_dir, "api_response_logs")
+        os.makedirs(log_dir, exist_ok=True)
 
-    log_file = os.path.join(
-        log_dir, f"bw_api_metrics_{datetime.now().strftime('%Y_%m')}.csv"
-    )
-
-    response_data = {
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "status": status,
-        "response_time": response_time,
-        "response_code": response_code,
-        "batch_size": len(json.loads(data)) if data else 0,
-        "error_type": type(error).__name__ if error else None,
-        "error_message": str(error) if error else None,
-    }
-
-    # Log to file
-    df = pd.DataFrame([response_data])
-    if os.path.exists(log_file):
-        df.to_csv(log_file, mode="a", header=False, index=False)
-    else:
-        df.to_csv(log_file, index=False)
-
-    # Print formatted log message
-    print(f"\n{status.upper()} Details:")
-    if error:
-        print(
-            f"Status Code: {response_code if response_code else 'N/A'}, Error Type: {response_data['error_type']}"
+        log_file = os.path.join(
+            log_dir, f"bw_api_metrics_{datetime.now().strftime('%Y_%m')}.csv"
         )
-        print(f"Error Message: {response_data['error_message']}")
-    print(f"Response Time: {response_time:.2f} seconds")
+
+        response_data = {
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "status": status,
+            "response_time": response_time,
+            "response_code": response_code,
+            "batch_size": len(json.loads(data)) if data else 0,
+            "error_type": type(error).__name__ if error else None,
+            "error_message": str(error) if error else None,
+        }
+
+        # Log to file
+        df = pd.DataFrame([response_data])
+        if os.path.exists(log_file):
+            df.to_csv(log_file, mode="a", header=False, index=False)
+        else:
+            df.to_csv(log_file, index=False)
+
+        # Print formatted log message
+        print(f"\n{status.upper()} Details:")
+        if error:
+            print(
+                f"Status Code: {response_code if response_code else 'N/A'}, Error Type: {response_data['error_type']}"
+            )
+            print(f"Error Message: {response_data['error_message']}")
+        print(f"Response Time: {response_time:.2f} seconds")
+    except Exception as e:
+        print(f"Error logging API response: {e}")
 
     return response_data
