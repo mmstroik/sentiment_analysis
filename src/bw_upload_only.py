@@ -3,7 +3,7 @@ import os
 import pandas as pd
 from tkinter import messagebox
 
-from src import file_operations, bw_api_handling
+from . import file_operations, bw_api_handling
 
 
 def create_bw_upload_thread(

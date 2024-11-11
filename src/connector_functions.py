@@ -5,8 +5,8 @@ import pandas as pd
 from tkinter import messagebox
 import time
 
-from src.input_config import SentimentAnalysisConfig
-from src import (
+from .input_config import SentimentAnalysisConfig
+from . import (
     async_core_logic,
     file_operations,
     bw_api_handling,
