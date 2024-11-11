@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 import tkinter as tk
@@ -51,10 +52,21 @@ class SentimentAnalysisApp:
         return os.path.join(base_path, relative_path)
 
     def init_styles(self):
-        if darkdetect.isDark():
-            self.style = ttk.Style("quadrant")
-        else:
-            self.style = ttk.Style("quadrant-light")
+        themes_path = self.resource_path('themes/themes.json')
+        try:
+            self.style = ttk.Style()
+            self.style.load_user_themes(themes_path)
+                
+            if darkdetect.isDark():
+                self.style.theme_use("custom-dark")
+            else:
+                self.style.theme_use("custom-light")        
+                
+        except Exception as e:
+            print(f"Error loading themes: {e}")
+            self.style.theme_use("darkly")
+
+
         self.style.configure("TNotebook", tabposition="n")
         self.style.configure("Toolbutton", font=("Segoe UI", 12))
         self.style.configure("radios.Toolbutton", font=("Segoe UI", 11), padding=5)
