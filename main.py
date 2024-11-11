@@ -29,7 +29,7 @@ class SentimentAnalysisApp:
         self.master = master
         self.master.minsize(450, 200)
         self.master.title("Sentiment Analysis Tool")
-        icon_path = self.resource_path("pie_icon.ico")
+        icon_path = self.resource_path("themes/pie_icon.ico")
         self.master.iconbitmap(icon_path)
 
         # initialize styles
