@@ -11,3 +11,4 @@ src/__pycache__/
 src/api_response_logs/
 *.csv
 samplefromcsv.py
+queryconvert*.py

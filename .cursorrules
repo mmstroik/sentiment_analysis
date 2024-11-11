@@ -1,3 +1,4 @@
+<CodebaseInformation>
 This is a Python-based sentiment analysis tool for social media monitoringusing OpenAI GPT models with optional Brandwatch integration. Broadly, there are two main processing paths:
 
 1. Sentiment Analysis → (optional) Brandwatch Upload
@@ -20,3 +21,6 @@ Core modules:
 - bw_upload_only.py: Standalone Brandwatch upload workflow
 
 Uses threading for GUI non-blocking operations and asyncio for OpenAI API calls (using aiohttp requests, not the OpenAI Python SDK).
+
+log_message and update_progress_gui are threadsafe callback functions used to display messages and update the progress bar in the Tkinter GUI, respectively.
+</CodebaseInformation>
