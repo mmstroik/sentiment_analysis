@@ -37,14 +37,16 @@ async def async_update_bw_sentiment(
     retries = 0
     chunk_index = 0
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
-    
+
     async with aiohttp.ClientSession() as session:
         while chunk_index < len(chunks):
             remaining_chunks = len(chunks) - chunk_index
             chunk_group_size = min(MAX_CONCURRENT_REQUESTS, remaining_chunks)
-            current_chunks = chunks[chunk_index:chunk_index + chunk_group_size]
+            current_chunks = chunks[chunk_index : chunk_index + chunk_group_size]
 
-            log_message(f"Sending batches {chunk_index + 1} to {chunk_index + chunk_group_size} of {len(chunks)} to Brandwatch...")
+            log_message(
+                f"Sending batches {chunk_index + 1} to {chunk_index + chunk_group_size} of {len(chunks)} to Brandwatch..."
+            )
 
             try:
                 processed_count, new_failed_chunks = await process_chunk_group(
@@ -60,19 +62,25 @@ async def async_update_bw_sentiment(
                             break
 
                         wait_time = 60 * (2 ** (retries - 1))
-                        log_message(f"Pausing for {wait_time/60} minutes before retrying...")
+                        log_message(
+                            f"Pausing for {wait_time/60} minutes before retrying..."
+                        )
                         await asyncio.sleep(wait_time)
                         # Don't advance chunk_index - we'll retry the same chunks
                     else:
                         # Some chunks succeeded, some failed
                         # Replace the current chunk group with just the failed chunks
-                        chunks[chunk_index:chunk_index + chunk_group_size] = new_failed_chunks
+                        chunks[chunk_index : chunk_index + chunk_group_size] = (
+                            new_failed_chunks
+                        )
                         chunk_group_size = len(new_failed_chunks)
                         retries = 0  # Reset retries since we had partial success
 
                 if processed_count > 0:
                     total_sent += processed_count
-                    log_message(f"Progress: Updated {total_sent} of {len(cleaned_sentiment_dicts)} mentions in Brandwatch.")
+                    log_message(
+                        f"Progress: Updated {total_sent} of {len(cleaned_sentiment_dicts)} mentions in Brandwatch."
+                    )
                     progress = (total_sent / len(cleaned_sentiment_dicts)) * 10
                     update_progress_gui(progress + 85)
                     chunk_index += chunk_group_size
@@ -82,23 +90,28 @@ async def async_update_bw_sentiment(
                 break
 
 
-async def process_chunk_group(chunks: List[str], session: aiohttp.ClientSession, 
-                            log_message, semaphore: asyncio.Semaphore) -> tuple[int, List[str]]:
+async def process_chunk_group(
+    chunks: List[str],
+    session: aiohttp.ClientSession,
+    log_message,
+    semaphore: asyncio.Semaphore,
+) -> tuple[int, List[str]]:
     """Process a group of chunks in parallel
     Returns: (successful_count, failed_chunks)"""
-    tasks = [async_bw_request(session, chunk, log_message, semaphore) 
-             for chunk in chunks]
+    tasks = [
+        async_bw_request(session, chunk, log_message, semaphore) for chunk in chunks
+    ]
     results = await asyncio.gather(*tasks)
-    
+
     successful_count = 0
     failed_chunks = []
-    
+
     for chunk, (result_type, count) in zip(chunks, results):
         if result_type == "SUCCESS":
             successful_count += count
         else:
             failed_chunks.append(chunk)
-            
+
     return successful_count, failed_chunks
 
 
@@ -178,9 +191,7 @@ async def async_bw_request(
 
 def prepare_data_for_bw(df, log_message):
     df_bw = df.copy()
-    df_bw["Sentiment"] = df_bw[
-        "Sentiment"
-    ].str.lower()
+    df_bw["Sentiment"] = df_bw["Sentiment"].str.lower()
 
     # remove invalid sentiment values
     df_bw = df_bw[df_bw["Sentiment"].isin(["positive", "negative", "neutral"])]

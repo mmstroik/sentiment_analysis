@@ -36,7 +36,13 @@ async def batch_processing_handler(
         # Initial processing
         update_progress_gui(5)
         start_time = await process_batches(
-            config, df, df, update_progress_gui, log_message, session, is_reprocessing=False
+            config,
+            df,
+            df,
+            update_progress_gui,
+            log_message,
+            session,
+            is_reprocessing=False,
         )
 
         # Reprocess errored tweets
@@ -47,9 +53,15 @@ async def batch_processing_handler(
             )
             await asyncio.sleep(RATE_LIMIT_DELAY + 5)
             start_time = await process_batches(
-                config, df, errored_df, update_progress_gui, log_message, session, is_reprocessing=True
+                config,
+                df,
+                errored_df,
+                update_progress_gui,
+                log_message,
+                session,
+                is_reprocessing=True,
             )
-            
+
             # Check for remaining errors
             errored_df = df[df["Sentiment"].isin(["Error", ""])]
             if not errored_df.empty:
@@ -66,27 +78,31 @@ async def process_batches(
     update_progress_gui,
     log_message,
     session,
-    is_reprocessing=False
+    is_reprocessing=False,
 ):
     # Track progress for this processing run
     total = len(working_df)
     processed = 0
     start_idx = 0
-    
+
     while start_idx < len(working_df):
         log_message("Calculating size of next batch...")
         batch_end_idx = calculate_batch_size(
             working_df, config.batch_token_limit, config.batch_requests_limit, start_idx
         )
-        
+
         # Different message based on processing type
         if is_reprocessing:
-            log_message(f"Reprocessing batch {start_idx+1}-{batch_end_idx} of {total} errored mentions...")
+            log_message(
+                f"Reprocessing batch {start_idx+1}-{batch_end_idx} of {total} errored mentions..."
+            )
         else:
-            log_message(f"Processing batch {start_idx+1}-{batch_end_idx} of {total} mentions...")
+            log_message(
+                f"Processing batch {start_idx+1}-{batch_end_idx} of {total} mentions..."
+            )
 
         batch = working_df.iloc[start_idx:batch_end_idx]
-        
+
         # Create tasks based on configuration
         if config.customization_option == "Multi-Company":
             tasks = [
@@ -108,13 +124,13 @@ async def process_batches(
         processed += len(results)
         progress = (processed / total) * 80
         update_progress_gui(progress + 5)
-        
+
         # Different progress message based on processing type
         if is_reprocessing:
             log_message(f"Reprocessed {processed} of {total} errored mentions.")
         else:
             log_message(f"Progress: Processed {processed} of {total} mentions.")
-            
+
         start_idx = batch_end_idx
 
         if start_idx < len(working_df):

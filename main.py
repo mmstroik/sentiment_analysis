@@ -1,4 +1,3 @@
-import json
 import os
 import sys
 import tkinter as tk
@@ -11,7 +10,6 @@ import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 from ttkbootstrap.utility import enable_high_dpi_awareness
 from ttkbootstrap.tooltip import ToolTip
-
 
 import pandas as pd
 import darkdetect
@@ -48,20 +46,19 @@ class SentimentAnalysisApp:
         return os.path.join(base_path, relative_path)
 
     def init_styles(self):
-        themes_path = self.resource_path('themes/themes.json')
+        themes_path = self.resource_path("themes/themes.json")
         try:
             self.style = ttk.Style()
             self.style.load_user_themes(themes_path)
-                
+
             if darkdetect.isDark():
                 self.style.theme_use("custom-dark")
             else:
-                self.style.theme_use("custom-light")        
-                
+                self.style.theme_use("custom-light")
+
         except Exception as e:
             print(f"Error loading themes: {e}")
             self.style.theme_use("darkly")
-
 
         self.style.configure("TNotebook", tabposition="n")
         self.style.configure("Toolbutton", font=("Segoe UI", 12))
@@ -133,10 +130,14 @@ class SentimentAnalysisApp:
         self.notebook.pack(expand=True, fill=tk.BOTH)
 
         self.sentiment_tab_frame = tk.Frame(self.notebook)
-        self.notebook.add(self.sentiment_tab_frame, text="Sentiment Analysis", padding=[15, 5, 15, 5])
+        self.notebook.add(
+            self.sentiment_tab_frame, text="Sentiment Analysis", padding=[15, 5, 15, 5]
+        )
 
         self.bw_tab_frame = tk.Frame(self.notebook)
-        self.notebook.add(self.bw_tab_frame, text="BW Upload Only", padding=[15, 5, 15, 5])
+        self.notebook.add(
+            self.bw_tab_frame, text="BW Upload Only", padding=[15, 5, 15, 5]
+        )
 
     def create_sentiment_tab(self):
         self.create_output_section()
@@ -251,12 +252,12 @@ class SentimentAnalysisApp:
         )
         self.multi_company_entry = tk.Text(
             self.multi_company_frame,
-            width=55,
+            width=52,
             height=2,
             font=("Segoe UI", 11),
             wrap=tk.WORD,
         )
-        
+
         separate_company_tags_checkbox_frame = tk.Frame(self.multi_company_frame)
         separate_company_tags_checkbox = ttk.Checkbutton(
             separate_company_tags_checkbox_frame,
@@ -457,7 +458,7 @@ class SentimentAnalysisApp:
             ),
         )
         instructions_text_area.configure(state="disabled")
-    
+
     def create_advanced_options(self):
         self.advanced_options_label = tk.Label(
             self.advanced_frame, text="Advanced Options:", font=("Segoe UI", 12)
@@ -471,7 +472,7 @@ class SentimentAnalysisApp:
             style="Roundtoggle.Toolbutton",
         )
         self.logprob_checkbox.pack(pady=(15, 0))
-        
+
         # temperature slider
         self.temperature_label = tk.Label(
             self.advanced_frame, text="Temperature: 0.3", font=("Segoe UI", 12)
@@ -484,10 +485,10 @@ class SentimentAnalysisApp:
             to=2,
             orient="horizontal",
             value=0.3,
-            command=self.update_temperature_label
+            command=self.update_temperature_label,
         )
         self.temperature_scale.pack(pady=(2, 0))
-        
+
         # max tokens slider
         self.max_tokens_label = tk.Label(
             self.advanced_frame, text="Max Completion Tokens: 1", font=("Segoe UI", 12)
@@ -500,14 +501,16 @@ class SentimentAnalysisApp:
             to=20,
             orient="horizontal",
             value=1,
-            command=self.update_max_tokens_label
+            command=self.update_max_tokens_label,
         )
         self.max_tokens_scale.pack(pady=(2, 0))
-        
+
     def update_temperature_label(self, value):
-        formatted_value = "{:.1f}".format(float(value)) # Round to 1 decimal place for display
+        formatted_value = "{:.1f}".format(
+            float(value)
+        )  # Round to 1 decimal place for display
         self.temperature_label.config(text=f"Temperature: {formatted_value}")
-        
+
     def update_max_tokens_label(self, value):
         formatted_value = str(int(float(value)))  # Convert to whole integer
         self.max_tokens_label.config(text=f"Max Completion Tokens: {formatted_value}")
@@ -521,7 +524,7 @@ class SentimentAnalysisApp:
                 ("Excel Files", "*.xlsx"),
                 ("CSV Files", "*.csv"),
                 ("Zip Files", "*.zip"),
-            ]
+            ],
         )
         self.input_entry.delete(0, tk.END)
         self.input_entry.insert(0, file_path)
@@ -581,7 +584,9 @@ class SentimentAnalysisApp:
     def on_advanced_checkbox(self):
         advanced_checkbox_bool = self.advanced_checkbox_var.get()
         if advanced_checkbox_bool:
-            self.advanced_frame.pack(side=tk.RIGHT, padx=(20,20), pady=10, expand=True, fill=tk.BOTH)
+            self.advanced_frame.pack(
+                side=tk.RIGHT, padx=(20, 20), pady=10, expand=True, fill=tk.BOTH
+            )
         else:
             self.advanced_frame.pack_forget()
 
@@ -625,7 +630,6 @@ class SentimentAnalysisApp:
             log_message=self.log_message,
             enable_button=self.enable_button,
             disable_button=self.disable_button,
-            
         )
 
     def start_bw_upload(self):
