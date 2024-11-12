@@ -16,18 +16,24 @@ def check_file_paths(input_file, output_file):
 
 def read_file(input_file, log_message):
     file_extension = os.path.splitext(input_file)[1].lower()
+    temp_dir = None
     if file_extension == ".zip":
-        extracted_file = extract_zip_file(input_file, log_message)
         try:
+            extracted_file = extract_zip_file(input_file, log_message)
+            temp_dir = os.path.dirname(extracted_file)
             df = read_csv_file(extracted_file, log_message)
         finally:
-            # Clean up the temporary directory
-            temp_dir = os.path.dirname(extracted_file)
-            if os.path.exists(extracted_file):
-                os.remove(extracted_file)
-            if os.path.exists(temp_dir):
-                os.rmdir(temp_dir)
-            log_message("Cleaned up temporary extraction files")
+            # Ensure cleanup happens even if errors occur
+            if temp_dir and os.path.exists(temp_dir):
+                try:
+                    for file in os.listdir(temp_dir):
+                        file_path = os.path.join(temp_dir, file)
+                        if os.path.isfile(file_path):
+                            os.remove(file_path)
+                    os.rmdir(temp_dir)
+                    log_message("Cleaned up temporary extraction files")
+                except Exception as e:
+                    log_message(f"Warning: Failed to clean up temporary files: {str(e)}")
         return df
     elif file_extension == ".csv":
         return read_csv_file(input_file, log_message)
@@ -125,25 +131,37 @@ def modify_styles_xml(excel_file):
 
 
 def extract_zip_file(zip_path, log_message):
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        # Get the name of the first file in the zip
-        file_list = zip_ref.namelist()
-        if not file_list:
-            raise ValueError("The zip file is empty.")
-        
-        csv_files = [f for f in file_list if f.lower().endswith('.csv')]
-        if not csv_files:
-            raise ValueError("No CSV file found in the zip archive.")
-        
-        csv_file = csv_files[0]
-        log_message(f"Extracting {csv_file} from zip archive...")
-        
-        # Extract to a temporary directory
-        temp_dir = os.path.join(os.path.dirname(zip_path), "temp_extracted")
-        os.makedirs(temp_dir, exist_ok=True)
-        extracted_path = zip_ref.extract(csv_file, temp_dir)
-        
-        return extracted_path
+    # Create temp directory with unique name to avoid conflicts
+    temp_dir = os.path.join(os.path.dirname(zip_path), f"temp_extracted_{os.getpid()}")
+    os.makedirs(temp_dir, exist_ok=True)
+    
+    try:
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            file_list = zip_ref.namelist()
+            if not file_list:
+                raise ValueError("The zip file is empty.")
+            
+            csv_files = [f for f in file_list if f.lower().endswith('.csv')]
+            if not csv_files:
+                raise ValueError("No CSV file found in the zip archive.")
+            
+            csv_file = csv_files[0]
+            log_message(f"Extracting {csv_file} from zip archive...")
+            extracted_path = zip_ref.extract(csv_file, temp_dir)
+            
+            return extracted_path
+    except Exception:
+        # Clean up temp_dir if zip extraction fails
+        if os.path.exists(temp_dir):
+            try:
+                for file in os.listdir(temp_dir):
+                    file_path = os.path.join(temp_dir, file)
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
+                os.rmdir(temp_dir)
+            except Exception as e:
+                log_message(f"Warning: Failed to clean up temporary files: {str(e)}")
+        raise
 
 
 def write_file(df, output_file, log_message):

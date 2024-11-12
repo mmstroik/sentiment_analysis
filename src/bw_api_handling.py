@@ -53,6 +53,8 @@ async def async_update_bw_sentiment(
                     current_chunks, session, log_message, semaphore
                 )
 
+                num_successes = len(current_chunks) - len(new_failed_chunks)
+
                 if new_failed_chunks:
                     if processed_count == 0:
                         # All chunks in this group failed
@@ -70,19 +72,29 @@ async def async_update_bw_sentiment(
                     else:
                         # Some chunks succeeded, some failed
                         # Replace the current chunk group with just the failed chunks
-                        chunks[chunk_index : chunk_index + chunk_group_size] = (
-                            new_failed_chunks
-                        )
-                        chunk_group_size = len(new_failed_chunks)
+                        chunks[chunk_index + num_successes : chunk_index + chunk_group_size] = new_failed_chunks
                         retries = 0  # Reset retries since we had partial success
 
-                if processed_count > 0:
+                    if processed_count > 0:
+                        total_sent += processed_count
+                        log_message(
+                            f"Progress: Updated {total_sent} of {len(cleaned_sentiment_dicts)} mentions in Brandwatch."
+                        )
+                        progress = (total_sent / len(cleaned_sentiment_dicts)) * 10
+                        update_progress_gui(progress + 85)
+
+                    # Advance chunk_index by the number of successful chunks
+                    chunk_index += num_successes
+
+                else:
+                    # All chunks succeeded
                     total_sent += processed_count
                     log_message(
                         f"Progress: Updated {total_sent} of {len(cleaned_sentiment_dicts)} mentions in Brandwatch."
                     )
                     progress = (total_sent / len(cleaned_sentiment_dicts)) * 10
                     update_progress_gui(progress + 85)
+                    retries = 0  # Reset retries since we had success
                     chunk_index += chunk_group_size
 
             except Exception as e:
