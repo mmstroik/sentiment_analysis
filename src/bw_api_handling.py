@@ -73,6 +73,7 @@ async def async_update_bw_sentiment(
                         # Some chunks succeeded, some failed
                         # Replace the current chunk group with just the failed chunks
                         chunks[chunk_index + num_successes : chunk_index + chunk_group_size] = new_failed_chunks
+                        log_message(f"Will retry {len(new_failed_chunks)} failed chunks...")
                         retries = 0  # Reset retries since we had partial success
 
                     if processed_count > 0:
