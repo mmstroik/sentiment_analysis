@@ -24,41 +24,33 @@ logger.addHandler(queue_handler)
 
 
 # Asynchronously processes tweets in batches (based on token counts)
-async def process_tweets_in_batches(
+async def batch_processing_handler(
     config,
     df,
     update_progress_gui,
     log_message,
 ):
     calculate_token_count(config, df, log_message)
-    total = len(df)
-    processed = 0
+
     async with ClientSession() as session:
-        start_idx = 0
+        # Initial processing
         update_progress_gui(5)
-        start_time = await main_batch_processing_loop(
-            config,
-            df,
-            update_progress_gui,
-            log_message,
-            total,
-            processed,
-            session,
-            start_idx,
+        start_time = await process_batches(
+            config, df, df, update_progress_gui, log_message, session, is_reprocessing=False
         )
 
         # Reprocess errored tweets
         errored_df = df[df["Sentiment"].isin(["Error", ""])]
         if not errored_df.empty:
-            start_time = await reprocess_errors(
-                config,
-                df,
-                update_progress_gui,
-                log_message,
-                session,
-                errored_df,
+            log_message(
+                f"Waiting for rate limit timer before reprocessing {len(errored_df)} errored mentions..."
             )
-            # if any error still exists, notify the user how many and move on
+            await asyncio.sleep(RATE_LIMIT_DELAY + 5)
+            start_time = await process_batches(
+                config, df, errored_df, update_progress_gui, log_message, session, is_reprocessing=True
+            )
+            
+            # Check for remaining errors
             errored_df = df[df["Sentiment"].isin(["Error", ""])]
             if not errored_df.empty:
                 log_message(
@@ -67,26 +59,35 @@ async def process_tweets_in_batches(
     return df, start_time
 
 
-async def main_batch_processing_loop(
+async def process_batches(
     config,
     df,
+    working_df,
     update_progress_gui,
     log_message,
-    total,
-    processed,
     session,
-    start_idx,
+    is_reprocessing=False
 ):
-    while start_idx < len(df):
+    # Track progress for this processing run
+    total = len(working_df)
+    processed = 0
+    start_idx = 0
+    
+    while start_idx < len(working_df):
         log_message("Calculating size of next batch...")
         batch_end_idx = calculate_batch_size(
-            df, config.batch_token_limit, config.batch_requests_limit, start_idx
+            working_df, config.batch_token_limit, config.batch_requests_limit, start_idx
         )
-        log_message(
-            f"Processing batch {start_idx+1}-{batch_end_idx} of {total} mentions..."
-        )
-        # Set batch index and send requests
-        batch = df.iloc[start_idx:batch_end_idx]
+        
+        # Different message based on processing type
+        if is_reprocessing:
+            log_message(f"Reprocessing batch {start_idx+1}-{batch_end_idx} of {total} errored mentions...")
+        else:
+            log_message(f"Processing batch {start_idx+1}-{batch_end_idx} of {total} mentions...")
+
+        batch = working_df.iloc[start_idx:batch_end_idx]
+        
+        # Create tasks based on configuration
         if config.customization_option == "Multi-Company":
             tasks = [
                 call_openai_async(config, session, tweet, company)
@@ -102,79 +103,23 @@ async def main_batch_processing_loop(
         timer = asyncio.create_task(asyncio.sleep(RATE_LIMIT_DELAY))
         start_time = time.time()
 
-        # Handle results
         handle_batch_results(config, df, log_message, batch, results)
 
         processed += len(results)
         progress = (processed / total) * 80
         update_progress_gui(progress + 5)
-        log_message(f"Progress: Processed {processed} of {total} mentions.")
-        start_idx = batch_end_idx
-
-        if start_idx < len(df):
-            log_message(
-                f"Waiting {str(RATE_LIMIT_DELAY)} secs for rate limit timer..."
-            )
-            await timer
-
-    return start_time
-
-
-async def reprocess_errors(
-    config,
-    df,
-    update_progress_gui,
-    log_message,
-    session,
-    errored_df,
-):
-    log_message(
-        f"Waiting for rate limit timer before reprocessing {len(errored_df)} errored mentions..."
-    )
-
-    await asyncio.sleep(RATE_LIMIT_DELAY)  # Wait for 60 seconds before starting
-    await asyncio.sleep(5)
-    
-    if len(errored_df) == 1:
-        errored_index = errored_df.index[0] + 2
-        log_message(f"Reprocessing single errored mention at output row {errored_index}")
         
-    total_errors = len(errored_df)
-    processed_errors = 0
-    start_idx = 0
-
-    while start_idx < len(errored_df):
-        batch_end_idx = calculate_batch_size(
-            errored_df, config.batch_token_limit, config.batch_requests_limit, start_idx
-        )
-
-        # Reprocess the batch of errored tweets
-        batch = errored_df.iloc[start_idx:batch_end_idx]
-        if config.customization_option == "Multi-Company":
-            tasks = [
-                call_openai_async(config, session, tweet, company)
-                for tweet, company in zip(batch["Full Text"], batch["AnalyzedCompany"])
-            ]
+        # Different progress message based on processing type
+        if is_reprocessing:
+            log_message(f"Reprocessed {processed} of {total} errored mentions.")
         else:
-            tasks = [
-                call_openai_async(config, session, tweet)
-                for tweet in batch["Full Text"]
-            ]
-
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        start_time = time.time()
-
-        handle_batch_results(config, df, log_message, batch, results)
-
-        processed_errors += len(results)
-        progress = (processed_errors / total_errors) * 80
-        update_progress_gui(
-            progress + 5
-        )  # Adjust progress callback for error processing
-        log_message(
-            f"Reprocessed {processed_errors} of {total_errors} errored mentions."
-        )
+            log_message(f"Progress: Processed {processed} of {total} mentions.")
+            
         start_idx = batch_end_idx
+
+        if start_idx < len(working_df):
+            log_message(f"Waiting {str(RATE_LIMIT_DELAY)} secs for rate limit timer...")
+            await timer
 
     return start_time
 
@@ -202,7 +147,7 @@ async def call_openai_async(
                 "content": f'{config.user_prompt} "{tweet}"\n{config.user_prompt2}',
             },
         ],
-        "temperature": 0.3,
+        "temperature": config.temperature,
         "max_tokens": 1,
         "logprobs": config.output_probabilities,
     }
@@ -223,25 +168,35 @@ async def call_openai_async(
                     result = await response.json()
                     sentiment = result["choices"][0]["message"]["content"]
                     if config.output_probabilities:
-                        logprob = result["choices"][0]["logprobs"]["content"][0]["logprob"]
+                        logprob = result["choices"][0]["logprobs"]["content"][0][
+                            "logprob"
+                        ]
                         return sentiment.strip(), logprob
                     else:
                         return sentiment.strip()
                 elif attempt < max_retries - 1:
-                    logger.warning(f"Retry attempt {attempt + 1} for tweet: {tweet[:50]}...")
+                    logger.warning(
+                        f"Retry attempt {attempt + 1} for tweet: {tweet[:50]}..."
+                    )
                     await asyncio.sleep(retry_delay)  # Wait before retrying
                     retry_delay += 2
                 else:
                     result = await response.text()
-                    logger.error(f"Failed after {max_retries} attempts for tweet: {tweet[:50]}... Error: {result}")
+                    logger.error(
+                        f"Failed after {max_retries} attempts for tweet: {tweet[:50]}... Error: {result}"
+                    )
                     return "Error"
         except Exception as e:
             if attempt < max_retries - 1:
-                logger.warning(f"Retry attempt {attempt + 1} for tweet: {tweet[:50]}... Exception: {str(e)}")
+                logger.warning(
+                    f"Retry attempt {attempt + 1} for tweet: {tweet[:50]}... Exception: {str(e)}"
+                )
                 await asyncio.sleep(retry_delay)  # Wait before retrying
                 retry_delay += 2
             else:
-                logger.error(f"Failed after {max_retries} attempts for tweet: {tweet[:50]}... Exception: {str(e)}")
+                logger.error(
+                    f"Failed after {max_retries} attempts for tweet: {tweet[:50]}... Exception: {str(e)}"
+                )
                 return "Error"
 
 
@@ -258,7 +213,7 @@ def handle_batch_results(config, df, log_message, batch, results):
             else:
                 sentiment = result
                 df.at[tweet_idx, "Sentiment"] = sentiment
-                
+
 
 def calculate_token_count(config, df, log_message):
     log_message("Calculating token counts for each mention...")

@@ -17,6 +17,7 @@ class SentimentAnalysisConfig:
     company_column: Optional[str] = None
     multi_company_entry: Optional[str] = None
     separate_company_analysis: bool = False
+    temperature: float = 0.3
     model_name: str = field(init=False)
     batch_token_limit: int = field(init=False)
     batch_requests_limit: int = field(init=False)

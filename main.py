@@ -17,11 +17,7 @@ import pandas as pd
 import darkdetect
 from functools import partial
 
-from src.connector_functions import setup_sentiment_analysis
-from src.bw_upload_only import create_bw_upload_thread
-from src.tkmd import SimpleMarkdownText, HyperlinkManager
-from src.input_config import ConfigManager
-from src.metrics import analyze_api_metrics
+from src import connector_functions, bw_upload_only, metrics_analysis, tkmd, input_config
 
 
 class SentimentAnalysisApp:
@@ -41,7 +37,7 @@ class SentimentAnalysisApp:
         # Create and setup GUI components
         self.create_gui()
 
-        self.config_manager = ConfigManager()
+        self.config_manager = input_config.ConfigManager()
 
     def resource_path(self, relative_path):
         try:
@@ -84,6 +80,7 @@ class SentimentAnalysisApp:
         self.customization_var = tk.StringVar(value=" Default ")
         self.gpt_model_var = tk.StringVar(value=" GPT-4o mini ")
         self.bw_checkbox_var = tk.IntVar()
+        self.advanced_checkbox_var = tk.IntVar()
         self.logprob_checkbox_var = tk.IntVar()
         self.separate_company_tags_checkbox_var = tk.IntVar()
 
@@ -104,6 +101,7 @@ class SentimentAnalysisApp:
         self.create_progress_bar()
         self.create_log_area()
         self.create_instructions()
+        self.create_advanced_options()
 
     def create_input_section(self):
         input_label = tk.Label(
@@ -193,13 +191,14 @@ class SentimentAnalysisApp:
         )
         bw_checkbox.pack(pady=(0, 0))
 
-        logprob_checkbox = ttk.Checkbutton(
+        advanced_checkbox = ttk.Checkbutton(
             self.sentiment_tab_frame,
-            text=" Output probabilities for each sentiment prediction",
-            variable=self.logprob_checkbox_var,
+            text=" Advanced Options",
+            variable=self.advanced_checkbox_var,
             style="Roundtoggle.Toolbutton",
+            command=self.on_advanced_checkbox,
         )
-        logprob_checkbox.pack(pady=(15, 0))
+        advanced_checkbox.pack(pady=(15, 0))
 
     def create_customization_section(self):
         customization_label = tk.Label(
@@ -410,7 +409,7 @@ class SentimentAnalysisApp:
         )
         instructions_label.pack(fill="x")
 
-        instructions_text_area = SimpleMarkdownText(
+        instructions_text_area = tkmd.SimpleMarkdownText(
             self.instructions_frame,
             wrap=tk.WORD,
             width=50,
@@ -445,7 +444,7 @@ class SentimentAnalysisApp:
 """
         instructions_text_area.insert_markdown(instructions_text)
 
-        hyperlink = HyperlinkManager(instructions_text_area)
+        hyperlink = tkmd.HyperlinkManager(instructions_text_area)
         instructions_text_area.insert(
             "end",
             "Full Documentation/Instructions",
@@ -457,6 +456,39 @@ class SentimentAnalysisApp:
             ),
         )
         instructions_text_area.configure(state="disabled")
+    
+    def create_advanced_options(self):
+        self.advanced_options_label = tk.Label(
+            self.advanced_frame, text="Advanced Options:", font=("Segoe UI", 12)
+        )
+        self.advanced_options_label.pack()
+
+        self.logprob_checkbox = ttk.Checkbutton(
+            self.advanced_frame,
+            text=" Output probabilities for each sentiment prediction",
+            variable=self.logprob_checkbox_var,
+            style="Roundtoggle.Toolbutton",
+        )
+        self.logprob_checkbox.pack(pady=(15, 0))
+        
+        # temperature slider
+        self.temperature_label = tk.Label(
+            self.advanced_frame, text="Temperature: 0.3", font=("Segoe UI", 12)
+        )
+        self.temperature_label.pack(pady=(15, 0))
+        self.temperature_scale = ttk.Scale(
+            self.advanced_frame,
+            from_=0,
+            to=2,
+            orient="horizontal",
+            value=0.3,
+            command=self.update_temperature_label
+        )
+        self.temperature_scale.pack(pady=(1, 0))
+        
+    def update_temperature_label(self, value):
+        formatted_value = "{:.1f}".format(float(value)) # Round to 1 decimal place for display
+        self.temperature_label.config(text=f"Temperature: {formatted_value}")
 
     # GUI EVENT HANDLING FUNCTIONS
     def browse_input_file(self):
@@ -467,7 +499,7 @@ class SentimentAnalysisApp:
                 ("Excel Files", "*.xlsx"),
                 ("CSV Files", "*.csv"),
                 ("Zip Files", "*.zip"),
-            ],
+            ]
         )
         self.input_entry.delete(0, tk.END)
         self.input_entry.insert(0, file_path)
@@ -524,6 +556,13 @@ class SentimentAnalysisApp:
             self.user_prompt_frame.pack(before=self.gpt_model_label, pady=(5, 0))
             self.user_prompt_entry_frame.pack(before=self.gpt_model_label)
 
+    def on_advanced_checkbox(self):
+        advanced_checkbox_bool = self.advanced_checkbox_var.get()
+        if advanced_checkbox_bool:
+            self.advanced_frame.pack(side=tk.RIGHT, padx=(20,20), pady=10, expand=True, fill=tk.BOTH)
+        else:
+            self.advanced_frame.pack_forget()
+
     def reset_system_prompt(self):
         self.system_prompt_entry.delete("1.0", tk.END)
         self.system_prompt_entry.insert(
@@ -552,22 +591,24 @@ class SentimentAnalysisApp:
             separate_company_analysis=bool(
                 self.separate_company_tags_checkbox_var.get()
             ),
+            temperature=float(self.temperature_scale.get()),
         )
 
         self.setup_progress_bar(self.placeholder_frame, self.progress_var)
         self.progress_var.set(0)
-        setup_sentiment_analysis(
+        connector_functions.setup_sentiment_analysis(
             config=self.config_manager.sentiment_config,
             update_progress_gui=self.update_progress_gui,
             log_message=self.log_message,
             enable_button=self.enable_button,
             disable_button=self.disable_button,
+            
         )
 
     def start_bw_upload(self):
         self.setup_progress_bar(self.placeholder_frame, self.progress_var)
         self.progress_var.set(0)
-        create_bw_upload_thread(
+        bw_upload_only.create_bw_upload_thread(
             input_file=self.input_entry.get(),
             update_progress_gui=self.update_progress_gui,
             log_message=self.log_message,
@@ -576,7 +617,7 @@ class SentimentAnalysisApp:
         )
 
     def start_metrics_analysis(self):
-        analyze_api_metrics(
+        metrics_analysis.analyze_api_metrics(
             log_message=self.log_message,
             enable_button=self.enable_button,
             disable_button=self.disable_button,
