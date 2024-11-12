@@ -17,7 +17,7 @@ import pandas as pd
 import darkdetect
 from functools import partial
 
-from src import connector_functions, bw_upload_only, metrics_analysis, tkmd, input_config
+from src import connector_functions, bw_upload_only, metrics, tkmd, input_config
 
 
 class SentimentAnalysisApp:
@@ -86,8 +86,6 @@ class SentimentAnalysisApp:
 
     def create_gui(self):
         # Main frames
-        self.main_frame = ttk.Frame(self.master)
-        self.main_frame.pack(side=tk.RIGHT, padx=10, pady=10, expand=True, fill=tk.BOTH)
         self.instructions_frame = ttk.Frame(self.master)
         self.instructions_frame.pack(
             side=tk.LEFT, padx=10, pady=10, expand=True, fill=tk.BOTH
@@ -481,17 +479,38 @@ class SentimentAnalysisApp:
         self.temperature_label.pack(pady=(15, 0))
         self.temperature_scale = ttk.Scale(
             self.advanced_frame,
+            length=200,
             from_=0,
             to=2,
             orient="horizontal",
             value=0.3,
             command=self.update_temperature_label
         )
-        self.temperature_scale.pack(pady=(1, 0))
+        self.temperature_scale.pack(pady=(2, 0))
+        
+        # max tokens slider
+        self.max_tokens_label = tk.Label(
+            self.advanced_frame, text="Max Completion Tokens: 1", font=("Segoe UI", 12)
+        )
+        self.max_tokens_label.pack(pady=(15, 0))
+        self.max_tokens_scale = ttk.Scale(
+            self.advanced_frame,
+            length=200,
+            from_=1,
+            to=20,
+            orient="horizontal",
+            value=1,
+            command=self.update_max_tokens_label
+        )
+        self.max_tokens_scale.pack(pady=(2, 0))
         
     def update_temperature_label(self, value):
         formatted_value = "{:.1f}".format(float(value)) # Round to 1 decimal place for display
         self.temperature_label.config(text=f"Temperature: {formatted_value}")
+        
+    def update_max_tokens_label(self, value):
+        formatted_value = str(int(float(value)))  # Convert to whole integer
+        self.max_tokens_label.config(text=f"Max Completion Tokens: {formatted_value}")
 
     # GUI EVENT HANDLING FUNCTIONS
     def browse_input_file(self):
@@ -595,6 +614,7 @@ class SentimentAnalysisApp:
                 self.separate_company_tags_checkbox_var.get()
             ),
             temperature=float(self.temperature_scale.get()),
+            max_tokens=int(self.max_tokens_scale.get()),
         )
 
         self.setup_progress_bar(self.placeholder_frame, self.progress_var)
@@ -620,7 +640,7 @@ class SentimentAnalysisApp:
         )
 
     def start_metrics_analysis(self):
-        metrics_analysis.analyze_api_metrics(
+        metrics.analyze_api_metrics(
             log_message=self.log_message,
             enable_button=self.enable_button,
             disable_button=self.disable_button,

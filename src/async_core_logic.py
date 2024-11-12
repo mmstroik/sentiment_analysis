@@ -148,7 +148,7 @@ async def call_openai_async(
             },
         ],
         "temperature": config.temperature,
-        "max_completion_tokens": 1,
+        "max_completion_tokens": config.max_tokens,
         "logprobs": config.output_probabilities,
     }
     headers = {
