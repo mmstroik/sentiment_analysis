@@ -398,7 +398,7 @@ class SentimentAnalysisApp:
         log_label.pack(pady=(10, 0))
 
         self.log_text_area = scrolledtext.ScrolledText(
-            self.main_frame, wrap=tk.WORD, width=55, height=9, font=("Segoe UI", 11)
+            self.main_frame, wrap=tk.WORD, width=57, height=9, font=("Segoe UI", 11)
         )
         self.log_text_area.configure(state="disabled")
         self.log_text_area.pack(pady=(2, 0))
@@ -460,13 +460,17 @@ class SentimentAnalysisApp:
         instructions_text_area.configure(state="disabled")
 
     def create_advanced_options(self):
+        # Create a container frame to hold all content
+        content_frame = ttk.Frame(self.advanced_frame)
+        
+        # Create all widgets in the content frame instead of advanced_frame
         self.advanced_options_label = tk.Label(
-            self.advanced_frame, text="Advanced Options:", font=("Segoe UI", 12)
+            content_frame, text="Advanced Options:", font=("Segoe UI", 12)
         )
         self.advanced_options_label.pack()
 
         self.logprob_checkbox = ttk.Checkbutton(
-            self.advanced_frame,
+            content_frame,
             text=" Output probabilities for each sentiment prediction",
             variable=self.logprob_checkbox_var,
             style="Roundtoggle.Toolbutton",
@@ -475,11 +479,11 @@ class SentimentAnalysisApp:
 
         # temperature slider
         self.temperature_label = tk.Label(
-            self.advanced_frame, text="Temperature: 0.3", font=("Segoe UI", 12)
+            content_frame, text="Temperature: 0.3", font=("Segoe UI", 12)
         )
         self.temperature_label.pack(pady=(15, 0))
         self.temperature_scale = ttk.Scale(
-            self.advanced_frame,
+            content_frame,
             length=200,
             from_=0,
             to=2,
@@ -491,11 +495,11 @@ class SentimentAnalysisApp:
 
         # max tokens slider
         self.max_tokens_label = tk.Label(
-            self.advanced_frame, text="Max Completion Tokens: 1", font=("Segoe UI", 12)
+            content_frame, text="Max Completion Tokens: 1", font=("Segoe UI", 12)
         )
         self.max_tokens_label.pack(pady=(15, 0))
         self.max_tokens_scale = ttk.Scale(
-            self.advanced_frame,
+            content_frame,
             length=200,
             from_=1,
             to=20,
@@ -504,6 +508,13 @@ class SentimentAnalysisApp:
             command=self.update_max_tokens_label,
         )
         self.max_tokens_scale.pack(pady=(2, 0))
+
+        # Pack the content frame with expand=True to center it vertically
+        content_frame.pack(expand=True)
+
+        # Add an empty frame at the bottom to push content up slightly
+        bottom_spacer = ttk.Frame(self.advanced_frame, height=200)  # Adjust height as needed
+        bottom_spacer.pack(side='bottom')
 
     def update_temperature_label(self, value):
         formatted_value = "{:.1f}".format(
