@@ -109,7 +109,7 @@ def run_sentiment_analysis_thread(
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         df, start_time = loop.run_until_complete(
-            async_core_logic.process_tweets_in_batches(
+            async_core_logic.batch_processing_handler(
                 config,
                 df,
                 update_progress_gui,
