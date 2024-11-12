@@ -92,6 +92,9 @@ class SentimentAnalysisApp:
         self.instructions_frame.pack(
             side=tk.LEFT, padx=10, pady=10, expand=True, fill=tk.BOTH
         )
+        self.main_frame = ttk.Frame(self.master)
+        self.main_frame.pack(side=tk.LEFT, padx=10, pady=10, expand=True, fill=tk.BOTH)
+        self.advanced_frame = ttk.Frame(self.master)
 
         # Create GUI components
         self.create_input_section()
