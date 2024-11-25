@@ -14,6 +14,11 @@ from . import (
 )
 
 
+def handle_error(log_message, enable_button, message: str):
+    log_message(f"Error: {message}")
+    messagebox.showerror("Error", message)
+    enable_button()
+
 def setup_sentiment_analysis(
     config: SentimentAnalysisConfig,
     update_progress_gui,
@@ -24,9 +29,7 @@ def setup_sentiment_analysis(
     try:
         file_operations.check_file_paths(config.input_file, config.output_file)
     except ValueError as e:
-        log_message(f"Error: {str(e)}")
-        messagebox.showerror("Error", str(e))
-        enable_button()
+        handle_error(log_message, enable_button, str(e))
         return
 
     disable_button()
@@ -42,9 +45,7 @@ def setup_sentiment_analysis(
         )
         thread.start()
     except Exception as e:
-        log_message(f"An error occurred: {str(e)}")
-        messagebox.showerror("Error", f"An error occurred: {str(e)}")
-        enable_button()
+        handle_error(log_message, enable_button, str(e))
 
 
 def run_sentiment_analysis_thread(
@@ -54,7 +55,9 @@ def run_sentiment_analysis_thread(
     enable_button,
 ):
     try:
-        log_message(f"-------\nReading file: '{os.path.basename(config.input_file)}'...")
+        log_message(
+            f"-------\nReading file: '{os.path.basename(config.input_file)}'..."
+        )
 
         try:
             df = file_operations.read_file(config.input_file, log_message)
@@ -67,9 +70,7 @@ def run_sentiment_analysis_thread(
         if config.update_brandwatch:
             if "Query Id" not in df.columns or "Resource Id" not in df.columns:
                 error_message = "The input file does not contain the required BW columns 'Query Id' or 'Resource Id'."
-                log_message("Error: " + error_message)
-                messagebox.showerror("Error", error_message)
-                enable_button()
+                handle_error(log_message, enable_button, error_message)
                 return
 
         if "Sentiment" not in df.columns:
@@ -80,7 +81,9 @@ def run_sentiment_analysis_thread(
                 df["Probs"] = ""
             cols = df.columns.tolist()
             sentiment_index = cols.index("Sentiment")
-            cols = cols[: sentiment_index + 1] + ["Probs"] + cols[sentiment_index + 1 : -1]
+            cols = (
+                cols[: sentiment_index + 1] + ["Probs"] + cols[sentiment_index + 1 : -1]
+            )
             df = df[cols]
 
         if config.customization_option == "Multi-Company":
@@ -96,9 +99,7 @@ def run_sentiment_analysis_thread(
                     config.separate_company_analysis,
                 )
             except ValueError as e:
-                log_message(f"Error: {str(e)}")
-                messagebox.showerror("Error", str(e))
-                enable_button()
+                handle_error(log_message, enable_button, str(e))
                 return
             if df is None:  # User chose not to proceed
                 log_message("Analysis cancelled by user.")
@@ -153,8 +154,5 @@ def run_sentiment_analysis_thread(
         return
 
     except Exception as e:
-        error_message = f"{str(e)}"
-        log_message(f"Error: {error_message}")
-        messagebox.showerror("Error", f"Error: {error_message}")
-        enable_button()
+        handle_error(log_message, enable_button, str(e))
         return
