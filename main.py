@@ -467,7 +467,7 @@ class SentimentAnalysisApp:
         instructions_text_area.configure(state="disabled")
 
     def create_advanced_options(self):
-        # Add an empty frame at the top to accoutn for input entry height
+        # Add an empty frame at the top to account for input entry height
         top_spacer = ttk.Frame(self.advanced_frame, height=58)
         top_spacer.pack(side='top')
         
@@ -487,6 +487,14 @@ class SentimentAnalysisApp:
             text="Advanced Options",
             padding=[20, 5, 20, 5]
         )
+        
+        advanced_reset_button = tk.Button(
+            advanced_tab,
+            text="Reset to Defaults",
+            font=("Segoe UI", 10),
+            command=self.reset_advanced_options,
+        )
+        advanced_reset_button.pack(pady=(10, 0))
 
         self.logprob_checkbox = ttk.Checkbutton(
             advanced_tab,
@@ -607,6 +615,22 @@ class SentimentAnalysisApp:
 
     def update_split_label(self, value):
         self.split_label.config(text=f"First Model Percentage: {int(float(value))}%")
+
+    def reset_advanced_options(self):
+        """Reset all advanced options to their default values."""
+        # Reset variables to defaults
+        self.logprob_checkbox_var.set(0)
+        self.temperature_var.set(0.3)
+        self.max_tokens_var.set(1)
+        self.dual_model_var.set(False)
+        self.second_model_var.set(" GPT-3.5 ")
+        self.split_scale_var.set(50)
+        
+        # Update labels and hide dual model frame
+        self.update_temperature_label(0.3)
+        self.update_max_tokens_label(1)
+        self.update_split_label(50)
+        self.dual_model_frame.pack_forget()
 
     # GUI EVENT HANDLING FUNCTIONS
     def browse_input_file(self):
