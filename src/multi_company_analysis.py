@@ -9,7 +9,7 @@ def setup_multi_company(df, company_column, multi_company_entry, log_message):
         raise ValueError("No companies were specified for multi-company analysis.")
     if company_column not in df.columns:
         log_message(
-            f"Column '{company_column}' not found. Checking for alternative format..."
+            f"Column '{company_column}' not found (to be expected if this is a BW 'data download'). Checking for alternative format..."
         )
         company_mentions = create_company_column(
             df, company_column, multi_company_entry

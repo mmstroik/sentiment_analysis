@@ -78,8 +78,13 @@ class SentimentAnalysisApp:
         self.gpt_model_var = tk.StringVar(value=" GPT-4o mini ")
         self.bw_checkbox_var = tk.IntVar()
         self.advanced_checkbox_var = tk.IntVar()
-        self.logprob_checkbox_var = tk.IntVar()
         self.separate_company_tags_checkbox_var = tk.IntVar()
+        
+        self.logprob_checkbox_var = tk.IntVar()
+        self.temperature_var = tk.DoubleVar(value=0.3)
+        self.max_tokens_var = tk.DoubleVar(value=1)
+
+
 
     def create_gui(self):
         # Main frames
@@ -111,7 +116,7 @@ class SentimentAnalysisApp:
         input_frame.pack()
 
         self.input_entry = tk.Entry(
-            input_frame, textvariable=self.input_var, width=50, font=("Segoe UI", 11)
+            input_frame, textvariable=self.input_var, width=55, font=("Segoe UI", 11)
         )
         self.input_entry.pack(side=tk.RIGHT, padx=(0, 10))
 
@@ -125,18 +130,18 @@ class SentimentAnalysisApp:
 
     def create_notebook(self):
         self.notebook = ttk.Notebook(
-            self.main_frame, style="TNotebook", takefocus=False, padding=[0, 15, 0, 10]
+            self.main_frame, style="TNotebook", takefocus=False, padding=[0, 10, 0, 10]
         )
         self.notebook.pack(expand=True, fill=tk.BOTH)
 
         self.sentiment_tab_frame = tk.Frame(self.notebook)
         self.notebook.add(
-            self.sentiment_tab_frame, text="Sentiment Analysis", padding=[15, 5, 15, 5]
+            self.sentiment_tab_frame, text="Sentiment Analysis", padding=[20, 5, 20, 5]
         )
 
         self.bw_tab_frame = tk.Frame(self.notebook)
         self.notebook.add(
-            self.bw_tab_frame, text="BW Upload Only", padding=[15, 5, 15, 5]
+            self.bw_tab_frame, text="BW Upload Only", padding=[20, 5, 20, 5]
         )
 
     def create_sentiment_tab(self):
@@ -156,7 +161,7 @@ class SentimentAnalysisApp:
         output_frame.pack()
 
         self.output_entry = tk.Entry(
-            output_frame, textvariable=self.output_var, width=50, font=("Segoe UI", 11)
+            output_frame, textvariable=self.output_var, width=55, font=("Segoe UI", 11)
         )
         self.output_entry.pack(side=tk.RIGHT)
 
@@ -227,7 +232,7 @@ class SentimentAnalysisApp:
             self.sentiment_tab_frame, text="Company name:", font=("Segoe UI", 12)
         )
         self.company_entry = tk.Entry(
-            self.sentiment_tab_frame, width=16, font=("Segoe UI", 11)
+            self.sentiment_tab_frame, width=18, font=("Segoe UI", 11)
         )
 
         self.create_multi_company_section()
@@ -242,7 +247,7 @@ class SentimentAnalysisApp:
             font=("Segoe UI", 12),
         )
         self.company_column_entry = tk.Entry(
-            self.multi_company_frame, width=20, font=("Segoe UI", 11)
+            self.multi_company_frame, width=25, font=("Segoe UI", 11)
         )
 
         multi_company_label = tk.Label(
@@ -252,7 +257,7 @@ class SentimentAnalysisApp:
         )
         self.multi_company_entry = tk.Text(
             self.multi_company_frame,
-            width=52,
+            width=55,
             height=2,
             font=("Segoe UI", 11),
             wrap=tk.WORD,
@@ -296,7 +301,7 @@ class SentimentAnalysisApp:
 
         self.system_prompt_entry = tk.Text(
             self.sentiment_tab_frame,
-            width=50,
+            width=55,
             height=3,
             font=("Segoe UI", 11),
             wrap=tk.WORD,
@@ -318,7 +323,7 @@ class SentimentAnalysisApp:
         self.user_prompt_entry_frame = tk.Frame(self.sentiment_tab_frame)
 
         self.user_prompt_entry = tk.Entry(
-            self.user_prompt_entry_frame, width=6, font=("Segoe UI", 11)
+            self.user_prompt_entry_frame, width=7, font=("Segoe UI", 11)
         )
         self.user_prompt_entry.insert(tk.END, "Text:")
         self.user_prompt_entry.pack(side=tk.LEFT)
@@ -327,7 +332,7 @@ class SentimentAnalysisApp:
         )
         user_prompt_tweet_label.pack(side=tk.LEFT, padx=(5, 5))
         self.user_prompt_entry2 = tk.Entry(
-            self.user_prompt_entry_frame, width=10, font=("Segoe UI", 11)
+            self.user_prompt_entry_frame, width=12, font=("Segoe UI", 11)
         )
         self.user_prompt_entry2.insert(tk.END, "Sentiment:")
         self.user_prompt_entry2.pack(side=tk.LEFT)
@@ -398,7 +403,7 @@ class SentimentAnalysisApp:
         log_label.pack(pady=(10, 0))
 
         self.log_text_area = scrolledtext.ScrolledText(
-            self.main_frame, wrap=tk.WORD, width=57, height=9, font=("Segoe UI", 11)
+            self.main_frame, wrap=tk.WORD, width=62, height=9, font=("Segoe UI", 11)
         )
         self.log_text_area.configure(state="disabled")
         self.log_text_area.pack(pady=(2, 0))
@@ -414,7 +419,7 @@ class SentimentAnalysisApp:
         instructions_text_area = tkmd.SimpleMarkdownText(
             self.instructions_frame,
             wrap=tk.WORD,
-            width=50,
+            width=55,
             height=34,
             font=instructions_font,
         )
@@ -488,7 +493,7 @@ class SentimentAnalysisApp:
             from_=0,
             to=2,
             orient="horizontal",
-            value=0.3,
+            variable=self.temperature_var,
             command=self.update_temperature_label,
         )
         self.temperature_scale.pack(pady=(2, 0))
@@ -504,7 +509,7 @@ class SentimentAnalysisApp:
             from_=1,
             to=20,
             orient="horizontal",
-            value=1,
+            variable=self.max_tokens_var,
             command=self.update_max_tokens_label,
         )
         self.max_tokens_scale.pack(pady=(2, 0))
