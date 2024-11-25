@@ -61,6 +61,7 @@ class SentimentAnalysisApp:
             self.style.theme_use("darkly")
 
         self.style.configure("TNotebook", tabposition="n")
+        self.style.configure("advanced.TNotebook", tabposition="nw")
         self.style.configure("Toolbutton", font=("Segoe UI", 12))
         self.style.configure("radios.Toolbutton", font=("Segoe UI", 11), padding=5)
         self.style.configure("run.TButton", font=("Segoe UI", 13))
@@ -83,8 +84,9 @@ class SentimentAnalysisApp:
         self.logprob_checkbox_var = tk.IntVar()
         self.temperature_var = tk.DoubleVar(value=0.3)
         self.max_tokens_var = tk.DoubleVar(value=1)
-
-
+        self.dual_model_var = tk.BooleanVar(value=False)
+        self.second_model_var = tk.StringVar(value=" GPT-3.5 ")
+        self.split_scale_var = tk.DoubleVar(value=50)
 
     def create_gui(self):
         # Main frames
@@ -465,17 +467,29 @@ class SentimentAnalysisApp:
         instructions_text_area.configure(state="disabled")
 
     def create_advanced_options(self):
-        # Create a container frame to hold all content
-        content_frame = ttk.Frame(self.advanced_frame)
+        # Add an empty frame at the top to accoutn for input entry height
+        top_spacer = ttk.Frame(self.advanced_frame, height=58)
+        top_spacer.pack(side='top')
         
-        # Create all widgets in the content frame instead of advanced_frame
-        self.advanced_options_label = tk.Label(
-            content_frame, text="Advanced Options:", font=("Segoe UI", 12)
+        # Create notebook for advanced options
+        self.advanced_notebook = ttk.Notebook(
+            self.advanced_frame,
+            style="advanced.TNotebook",
+            takefocus=False,
+            padding=[0, 10, 0, 10]
         )
-        self.advanced_options_label.pack()
+        self.advanced_notebook.pack(expand=True, fill=tk.BOTH)
+
+        # Create the advanced options tab
+        advanced_tab = ttk.Frame(self.advanced_notebook)
+        self.advanced_notebook.add(
+            advanced_tab,
+            text="Advanced Options",
+            padding=[20, 5, 20, 5]
+        )
 
         self.logprob_checkbox = ttk.Checkbutton(
-            content_frame,
+            advanced_tab,
             text=" Output probabilities for each sentiment prediction",
             variable=self.logprob_checkbox_var,
             style="Roundtoggle.Toolbutton",
@@ -484,11 +498,11 @@ class SentimentAnalysisApp:
 
         # temperature slider
         self.temperature_label = tk.Label(
-            content_frame, text="Temperature: 0.3", font=("Segoe UI", 12)
+            advanced_tab, text="Temperature: 0.3", font=("Segoe UI", 12)
         )
         self.temperature_label.pack(pady=(15, 0))
         self.temperature_scale = ttk.Scale(
-            content_frame,
+            advanced_tab,
             length=200,
             from_=0,
             to=2,
@@ -500,11 +514,11 @@ class SentimentAnalysisApp:
 
         # max tokens slider
         self.max_tokens_label = tk.Label(
-            content_frame, text="Max Completion Tokens: 1", font=("Segoe UI", 12)
+            advanced_tab, text="Max Completion Tokens: 1", font=("Segoe UI", 12)
         )
         self.max_tokens_label.pack(pady=(15, 0))
         self.max_tokens_scale = ttk.Scale(
-            content_frame,
+            advanced_tab,
             length=200,
             from_=1,
             to=20,
@@ -514,12 +528,66 @@ class SentimentAnalysisApp:
         )
         self.max_tokens_scale.pack(pady=(2, 0))
 
-        # Pack the content frame with expand=True to center it vertically
-        content_frame.pack(expand=True)
-
-        # Add an empty frame at the bottom to push content up slightly
-        bottom_spacer = ttk.Frame(self.advanced_frame, height=200)  # Adjust height as needed
+        # Add dual model section
+        self.create_dual_model_section(advanced_tab)
+        
+        # Add an empty frame at the bottom to accoutn for log text area height
+        bottom_spacer = ttk.Frame(self.advanced_frame, height=247)
         bottom_spacer.pack(side='bottom')
+
+
+    def create_dual_model_section(self, parent_frame):
+        """Create the dual model selection section in the advanced options."""
+        self.dual_model_checkbox = ttk.Checkbutton(
+            parent_frame,
+            text=" Use two models",
+            variable=self.dual_model_var,
+            command=self.toggle_dual_model_options,
+            style="Roundtoggle.Toolbutton",
+        )
+        self.dual_model_checkbox.pack(pady=(15, 0))
+        
+        # Create frame for dual model options (initially hidden)
+        self.dual_model_frame = ttk.Frame(parent_frame)
+        
+        # Second model selection
+        self.second_model_label = tk.Label(
+            self.dual_model_frame, 
+            text="Second Model:", 
+            font=("Segoe UI", 12)
+        )
+        self.second_model_label.pack()
+        
+        model_radio_frame = tk.Frame(self.dual_model_frame)
+        model_radio_frame.pack()
+        for option in [" GPT-3.5 ", " GPT-4o mini ", " GPT-4o "]:
+            model_radio_button = ttk.Radiobutton(
+                model_radio_frame,
+                text=option,
+                value=option,
+                variable=self.second_model_var,
+                style="radios.Toolbutton",
+            )
+            model_radio_button.pack(side="left")
+        
+        # Split percentage slider
+        self.split_label = tk.Label(
+            self.dual_model_frame, 
+            text="First Model Percentage: 50%", 
+            font=("Segoe UI", 12)
+        )
+        self.split_label.pack(pady=(15, 0))
+        
+        self.split_scale = ttk.Scale(
+            self.dual_model_frame,
+            length=200,
+            from_=10,
+            to=90,
+            orient="horizontal",
+            variable=self.split_scale_var,
+            command=self.update_split_label,
+        )
+        self.split_scale.pack(pady=(2, 0))
 
     def update_temperature_label(self, value):
         formatted_value = "{:.1f}".format(
@@ -530,6 +598,15 @@ class SentimentAnalysisApp:
     def update_max_tokens_label(self, value):
         formatted_value = str(int(float(value)))  # Convert to whole integer
         self.max_tokens_label.config(text=f"Max Completion Tokens: {formatted_value}")
+
+    def toggle_dual_model_options(self):
+        if self.dual_model_var.get():
+            self.dual_model_frame.pack(pady=(10, 0))
+        else:
+            self.dual_model_frame.pack_forget()
+
+    def update_split_label(self, value):
+        self.split_label.config(text=f"First Model Percentage: {int(float(value))}%")
 
     # GUI EVENT HANDLING FUNCTIONS
     def browse_input_file(self):
@@ -601,7 +678,7 @@ class SentimentAnalysisApp:
         advanced_checkbox_bool = self.advanced_checkbox_var.get()
         if advanced_checkbox_bool:
             self.advanced_frame.pack(
-                side=tk.RIGHT, padx=(20, 20), pady=10, expand=True, fill=tk.BOTH
+                side=tk.RIGHT, padx=(0, 10), pady=10, expand=True, fill=tk.BOTH
             )
         else:
             self.advanced_frame.pack_forget()
@@ -636,6 +713,9 @@ class SentimentAnalysisApp:
             ),
             temperature=float(self.temperature_scale.get()),
             max_tokens=int(self.max_tokens_scale.get()),
+            use_dual_models=bool(self.dual_model_var.get()),
+            second_gpt_model=self.second_model_var.get().strip(),
+            model_split_percentage=int(self.split_scale_var.get()),
         )
 
         self.setup_progress_bar(self.placeholder_frame, self.progress_var)

@@ -264,9 +264,6 @@ def calculate_token_count(config, df, log_message):
         + prompt_token_count
         + 2
     )
-    # Calculate and log the total input tokens
-    total_input_tokens = df["Token Count"].sum()
-    log_message(f"Total input tokens: {total_input_tokens}")
 
 
 def calculate_batch_size(df, batch_token_limit, batch_requests_limit, start_idx):
