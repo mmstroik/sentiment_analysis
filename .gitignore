@@ -9,3 +9,4 @@ src/api_response_logs/
 samplefromcsv.py
 queryconvert*.py
 .cursorrules
+CollapsingFrame.md

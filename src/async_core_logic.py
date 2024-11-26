@@ -23,9 +23,10 @@ async def batch_processing_handler(
 ):
     calculate_token_count(config, df, log_message)
 
+    progress_scale = 60 if config.update_brandwatch else 90
+    
     async with ClientSession() as session:
-        # Initial processing
-        update_progress_gui(5) # initial progress for progress bar
+        update_progress_gui(5)  # initial progress for progress bar
         start_time = await process_batches(
             config,
             df,
@@ -34,6 +35,7 @@ async def batch_processing_handler(
             log_message,
             session,
             is_reprocessing=False,
+            progress_scale=progress_scale,
         )
 
         # Reprocess errored tweets
@@ -51,6 +53,7 @@ async def batch_processing_handler(
                 log_message,
                 session,
                 is_reprocessing=True,
+                progress_scale=progress_scale,
             )
 
             # Check for remaining errors
@@ -70,18 +73,17 @@ async def process_batches(
     log_message,
     session,
     is_reprocessing=False,
+    progress_scale=60,
 ):
-    # Track progress for this processing run
     total = len(working_df)
     processed = 0
     start_idx = 0
 
     while start_idx < len(working_df):
-        log_message("Calculating size of next batch...")
         batch_end_idx = calculate_batch_size(
             working_df, config.batch_token_limit, config.batch_requests_limit, start_idx
         )
-
+        
         # Different message based on processing type
         if is_reprocessing:
             log_message(
@@ -106,15 +108,20 @@ async def process_batches(
                 for tweet in batch["Full Text"]
             ]
 
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        # Replace gather with as_completed
+        batch_results = []
+        for coro in asyncio.as_completed(tasks):
+            result = await coro
+            batch_results.append(result)
+            
+            processed += 1
+            progress = (processed / total) * progress_scale 
+            update_progress_gui(progress + 5)  # +5 from initial setup
+
         timer = asyncio.create_task(asyncio.sleep(RATE_LIMIT_DELAY))
         start_time = time.time()
 
-        handle_batch_results(config, df, log_message, batch, results)
-
-        processed += len(results)
-        progress = (processed / total) * 60  # 60% range for core processing
-        update_progress_gui(progress + 5)  # +5 from initial setup
+        handle_batch_results(config, df, log_message, batch, batch_results)
 
         # Different progress message based on processing type
         if is_reprocessing:

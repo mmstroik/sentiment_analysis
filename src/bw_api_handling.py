@@ -114,7 +114,7 @@ async def process_chunk_group(
     """Process a group of chunks in parallel
     Returns: (successful_count, failed_chunks, needs_backoff)"""
     tasks = [
-        async_bw_request(session, chunk, log_message) for chunk in chunks
+        async_bw_request(session, chunk) for chunk in chunks
     ]
     results = await asyncio.gather(*tasks)
 
@@ -136,7 +136,7 @@ async def process_chunk_group(
 
 
 async def async_bw_request(
-    session: aiohttp.ClientSession, data: str, log_message
+    session: aiohttp.ClientSession, data: str
 ) -> tuple[BWError, int]:
     await asyncio.sleep(0.5)
     start_time = time.time()
