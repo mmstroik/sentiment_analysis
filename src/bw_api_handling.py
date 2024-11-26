@@ -2,6 +2,7 @@ import asyncio
 import json
 import time
 from typing import List
+from enum import Enum
 
 import aiohttp
 import pandas as pd
@@ -20,6 +21,14 @@ TIMEOUT_ERROR_CODE = 100
 MAX_CONCURRENT_REQUESTS = 5
 
 
+class BWError(Enum):
+    SUCCESS = "SUCCESS"
+    RATE_LIMIT = "RATE_LIMIT"  # 429 - needs backoff
+    TRANSIENT = "TRANSIENT"    # 502, 503, 504, 408 - can retry immediately
+    TIMEOUT = "TIMEOUT"        # API timeout - can retry immediately
+    PERMANENT = "PERMANENT"    # Other API errors - don't retry
+
+
 def update_bw_sentiment(df: pd.DataFrame, update_progress_gui, log_message) -> None:
     asyncio.run(async_update_bw_sentiment(df, update_progress_gui, log_message))
 
@@ -34,9 +43,8 @@ async def async_update_bw_sentiment(
     ]
 
     total_sent = 0
-    retries = 0
     chunk_index = 0
-    semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
+    backoff_time = 60  # Start with 1 minute backoff
 
     async with aiohttp.ClientSession() as session:
         while chunk_index < len(chunks):
@@ -49,53 +57,46 @@ async def async_update_bw_sentiment(
             )
 
             try:
-                processed_count, new_failed_chunks = await process_chunk_group(
-                    current_chunks, session, log_message, semaphore
+                processed_count, failed_chunks, needs_backoff = await process_chunk_group(
+                    current_chunks, session, log_message
                 )
 
-                num_successes = len(current_chunks) - len(new_failed_chunks)
-
-                if new_failed_chunks:
-                    if processed_count == 0:
-                        # All chunks in this group failed
-                        retries += 1
-                        if retries > MAX_RETRIES:
-                            log_message("Maximum number of retries reached. Exiting...")
-                            break
-
-                        wait_time = 60 * (2 ** (retries - 1))
-                        log_message(
-                            f"Pausing for {wait_time/60} minutes before retrying..."
-                        )
-                        await asyncio.sleep(wait_time)
-                        # Don't advance chunk_index - we'll retry the same chunks
-                    else:
-                        # Some chunks succeeded, some failed
-                        # Replace the current chunk group with just the failed chunks
-                        chunks[chunk_index + num_successes : chunk_index + chunk_group_size] = new_failed_chunks
-                        log_message(f"Will retry {len(new_failed_chunks)} failed chunks...")
-                        retries = 0  # Reset retries since we had partial success
-
+                num_successes = len(current_chunks) - len(failed_chunks)
+                
+                if failed_chunks:
+                    if needs_backoff:
+                        # Rate limit hit - implement exponential backoff
+                        backoff_time = min(backoff_time * 2, MAX_RATE_LIMIT_WAIT_TIME)
+                        log_message(f"Rate limit reached. Backing off for {backoff_time/60:.1f} minutes...")
+                        await asyncio.sleep(backoff_time)
+                    elif processed_count == 0:
+                        # All chunks failed with transient errors - small delay and retry
+                        log_message("All requests failed. Retrying after short delay...")
+                        await asyncio.sleep(5)
+                    
+                    # Replace remaining chunks with failed ones
+                    chunks[chunk_index + num_successes : chunk_index + chunk_group_size] = failed_chunks
+                    
                     if processed_count > 0:
+                        # If we had some successes, reset backoff
+                        backoff_time = 60
                         total_sent += processed_count
                         log_message(
                             f"Progress: Updated {total_sent} of {len(cleaned_sentiment_dicts)} mentions in Brandwatch."
                         )
-                        progress = (total_sent / len(cleaned_sentiment_dicts)) * 10
-                        update_progress_gui(progress + 85)
+                        update_progress_gui((total_sent / len(cleaned_sentiment_dicts)) * 10 + 85)
 
-                    # Advance chunk_index by the number of successful chunks
+                    # Only advance by number of successful chunks
                     chunk_index += num_successes
 
                 else:
                     # All chunks succeeded
                     total_sent += processed_count
+                    backoff_time = 60  # Reset backoff time
                     log_message(
                         f"Progress: Updated {total_sent} of {len(cleaned_sentiment_dicts)} mentions in Brandwatch."
                     )
-                    progress = (total_sent / len(cleaned_sentiment_dicts)) * 10
-                    update_progress_gui(progress + 85)
-                    retries = 0  # Reset retries since we had success
+                    update_progress_gui((total_sent / len(cleaned_sentiment_dicts)) * 10 + 85)
                     chunk_index += chunk_group_size
 
             except Exception as e:
@@ -107,35 +108,35 @@ async def process_chunk_group(
     chunks: List[str],
     session: aiohttp.ClientSession,
     log_message,
-    semaphore: asyncio.Semaphore,
-) -> tuple[int, List[str]]:
+) -> tuple[int, List[str], bool]:
     """Process a group of chunks in parallel
-    Returns: (successful_count, failed_chunks)"""
+    Returns: (successful_count, failed_chunks, needs_backoff)"""
     tasks = [
-        async_bw_request(session, chunk, log_message, semaphore) for chunk in chunks
+        async_bw_request(session, chunk, log_message) for chunk in chunks
     ]
     results = await asyncio.gather(*tasks)
 
     successful_count = 0
     failed_chunks = []
+    needs_backoff = False
 
-    for chunk, (result_type, count) in zip(chunks, results):
-        if result_type == "SUCCESS":
+    for chunk, (error_type, count) in zip(chunks, results):
+        if error_type == BWError.SUCCESS:
             successful_count += count
-        else:
+        elif error_type == BWError.RATE_LIMIT:
+            needs_backoff = True
             failed_chunks.append(chunk)
+        elif error_type in (BWError.TRANSIENT, BWError.TIMEOUT):
+            failed_chunks.append(chunk)
+        # PERMANENT errors are dropped
 
-    return successful_count, failed_chunks
+    return successful_count, failed_chunks, needs_backoff
 
 
 async def async_bw_request(
-    session: aiohttp.ClientSession, data: str, log_message, semaphore: asyncio.Semaphore
-) -> tuple:
-    """
-    Async version of the bw_request function that handles a single batch
-    Returns a tuple of (result_type, batch_size)
-    """
-    await asyncio.sleep(0.5)  # Maintain the original rate limiting
+    session: aiohttp.ClientSession, data: str, log_message
+) -> tuple[BWError, int]:
+    await asyncio.sleep(0.5)
     start_time = time.time()
     headers = {
         "Authorization": f"Bearer {BW_API_KEY}",
@@ -143,63 +144,47 @@ async def async_bw_request(
     }
 
     try:
-        async with semaphore:  # Control concurrent requests
-            async with session.patch(URL, data=data, headers=headers) as response:
-                response_time = time.time() - start_time
+        async with session.patch(URL, data=data, headers=headers) as response:
+            http_response_time = time.time() - start_time
+            print(f"HTTP response time: {http_response_time:.2f}s")
+            
+            # Handle HTTP-level errors first
+            if response.status == 429:
+                metrics.log_api_response("rate_limit", http_response_time, http_response_time, response.status, data)
+                return BWError.RATE_LIMIT, 0
+            
+            if response.status in TRANSIENT_ERROR_CODES:
+                metrics.log_api_response("transient", http_response_time, http_response_time, response.status, data)
+                return BWError.TRANSIENT, 0
 
-                if response.status == 429:
-                    metrics.log_api_response(
-                        "rate_limit", response_time, response.status, data
-                    )
-                    return "RATE_LIMIT_EXCEEDED", 0
+            # Try to parse response
+            try:
+                response_json = await response.json()
+            except json.JSONDecodeError as e:
+                total_response_time = time.time() - start_time
+                print(f"Failed to parse response. Total response time: {total_response_time:.2f}s")
+                metrics.log_api_response("read_error", http_response_time, total_response_time, response.status, data=data, error=e)
+                return BWError.TRANSIENT, 0
+            total_response_time = time.time() - start_time
+            
+            # Handle API-level errors
+            if "errors" in response_json and response_json["errors"]:
+                for error in response_json["errors"]:
+                    if error.get("code") == TIMEOUT_ERROR_CODE:
+                        metrics.log_api_response("timeout", http_response_time, total_response_time, response.status, data)
+                        return BWError.TIMEOUT, 0
 
-                elif response.status in TRANSIENT_ERROR_CODES:
-                    metrics.log_api_response(
-                        "transient", response_time, response.status, data
-                    )
-                    return "TRANSIENT_ERROR", 0
-
-                try:
-                    response_json = await response.json()
-                except ValueError:
-                    metrics.log_api_response(
-                        "json_error", response_time, response.status, data
-                    )
-                    log_message(
-                        f"ERROR: Error updating sentiment values in Brandwatch: \n{await response.text()}"
-                    )
-                    return "JSON_ERROR", 0
-
-                if "errors" in response_json and response_json["errors"]:
-                    for error in response_json["errors"]:
-                        if error.get("code") == TIMEOUT_ERROR_CODE:
-                            metrics.log_api_response(
-                                "timeout", response_time, response.status, data
-                            )
-                            return "TIMEOUT_ERROR", 0
-
-                    metrics.log_api_response(
-                        "api_error",
-                        response_time,
-                        response.status,
-                        data,
-                        error=response_json["errors"],
-                    )
-                    log_message(
-                        f"ERROR: Error updating sentiment values in Brandwatch: \n{response_json['errors']}"
-                    )
-                    return "API_ERROR", 0
-
-                metrics.log_api_response(
-                    "success", response_time, response.status, data
-                )
-                return "SUCCESS", len(json.loads(data))
+                metrics.log_api_response("api_error", http_response_time, total_response_time, response.status, data, error=response_json["errors"])
+                return BWError.PERMANENT, 0
+            print(f"Total response time: {total_response_time:.2f}s")
+            metrics.log_api_response("success", http_response_time, total_response_time, response.status, data=data)
+            return BWError.SUCCESS, len(json.loads(data))
 
     except Exception as e:
-        response_time = time.time() - start_time
-        metrics.log_api_response("connection_error", response_time, error=e, data=data)
-        log_message(f"Connection error: {str(e)}")
-        return "TRANSIENT_ERROR", 0
+        total_response_time = time.time() - start_time
+        print(f"Failed to send request. Total response time: {total_response_time:.2f}s")
+        metrics.log_api_response("connection_error", http_response_time=0, total_response_time=total_response_time, data=data, error=e)
+        return BWError.TRANSIENT, 0
 
 
 def prepare_data_for_bw(df, log_message):

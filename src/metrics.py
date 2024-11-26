@@ -67,7 +67,8 @@ def analyze_api_metrics(log_message, enable_button, disable_button, log_dir="api
 
 def log_api_response(
     status,
-    response_time,
+    http_response_time,
+    total_response_time,   
     response_code=None,
     data=None,
     error=None,
@@ -91,7 +92,8 @@ def log_api_response(
         response_data = {
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "status": status,
-            "response_time": response_time,
+            "http_response_time": http_response_time,
+            "total_response_time": total_response_time,
             "response_code": response_code,
             "batch_size": len(json.loads(data)) if data else 0,
             "error_type": type(error).__name__ if error else None,
@@ -105,14 +107,6 @@ def log_api_response(
         else:
             df.to_csv(log_file, index=False)
 
-        # Print formatted log message
-        print(f"\n{status.upper()} Details:")
-        if error:
-            print(
-                f"Status Code: {response_code if response_code else 'N/A'}, Error Type: {response_data['error_type']}"
-            )
-            print(f"Error Message: {response_data['error_message']}")
-        print(f"Response Time: {response_time:.2f} seconds")
     except Exception as e:
         print(f"Error logging API response: {e}")
 
