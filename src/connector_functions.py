@@ -198,7 +198,7 @@ def run_dual_model_analysis(
         async_core_logic.batch_processing_handler(
             config1,
             df1,
-            lambda x: update_progress_gui(x * first_model_weight),  # Scale by actual percentage
+            lambda x: update_progress_gui(x * first_model_weight),
             log_message,
         )
     )
@@ -211,7 +211,7 @@ def run_dual_model_analysis(
         async_core_logic.batch_processing_handler(
             config2,
             df2,
-            lambda x: update_progress_gui(config.model_split_percentage + (x * (1 - first_model_weight))),
+            lambda x: update_progress_gui(60 * first_model_weight + x * (1 - first_model_weight)),
             log_message,
         )
     )

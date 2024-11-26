@@ -1,9 +1,6 @@
 import asyncio
 import math
 import time
-import logging
-from logging.handlers import QueueHandler
-import queue
 
 import pandas as pd
 from aiohttp import ClientSession
@@ -15,12 +12,6 @@ from tiktoken_ext import openai_public
 from .secrets.keys import OPENAI_API_KEY
 
 RATE_LIMIT_DELAY = 30  # seconds
-
-log_queue = queue.Queue(-1)  # No limit on size
-queue_handler = QueueHandler(log_queue)
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-logger.addHandler(queue_handler)
 
 
 # Asynchronously processes tweets in batches (based on token counts)
@@ -34,7 +25,7 @@ async def batch_processing_handler(
 
     async with ClientSession() as session:
         # Initial processing
-        update_progress_gui(5)
+        update_progress_gui(5) # initial progress for progress bar
         start_time = await process_batches(
             config,
             df,
@@ -122,8 +113,8 @@ async def process_batches(
         handle_batch_results(config, df, log_message, batch, results)
 
         processed += len(results)
-        progress = (processed / total) * 80
-        update_progress_gui(progress + 5)
+        progress = (processed / total) * 60  # 60% range for core processing
+        update_progress_gui(progress + 5)  # +5 from initial setup
 
         # Different progress message based on processing type
         if is_reprocessing:
@@ -191,28 +182,16 @@ async def call_openai_async(
                     else:
                         return sentiment.strip()
                 elif attempt < max_retries - 1:
-                    logger.warning(
-                        f"Retry attempt {attempt + 1} for tweet: {tweet[:50]}..."
-                    )
                     await asyncio.sleep(retry_delay)  # Wait before retrying
                     retry_delay += 2
                 else:
                     result = await response.text()
-                    logger.error(
-                        f"Failed after {max_retries} attempts for tweet: {tweet[:50]}... Error: {result}"
-                    )
                     return "Error"
         except Exception as e:
             if attempt < max_retries - 1:
-                logger.warning(
-                    f"Retry attempt {attempt + 1} for tweet: {tweet[:50]}... Exception: {str(e)}"
-                )
                 await asyncio.sleep(retry_delay)  # Wait before retrying
                 retry_delay += 2
             else:
-                logger.error(
-                    f"Failed after {max_retries} attempts for tweet: {tweet[:50]}... Exception: {str(e)}"
-                )
                 return "Error"
 
 

@@ -84,7 +84,8 @@ async def async_update_bw_sentiment(
                         log_message(
                             f"Progress: Updated {total_sent} of {len(cleaned_sentiment_dicts)} mentions in Brandwatch."
                         )
-                        update_progress_gui((total_sent / len(cleaned_sentiment_dicts)) * 10 + 85)
+                        progress = (total_sent / len(cleaned_sentiment_dicts)) * 30  # 30% range for BW
+                        update_progress_gui(65 + progress)
 
                     # Only advance by number of successful chunks
                     chunk_index += num_successes
@@ -96,7 +97,8 @@ async def async_update_bw_sentiment(
                     log_message(
                         f"Progress: Updated {total_sent} of {len(cleaned_sentiment_dicts)} mentions in Brandwatch."
                     )
-                    update_progress_gui((total_sent / len(cleaned_sentiment_dicts)) * 10 + 85)
+                    progress = (total_sent / len(cleaned_sentiment_dicts)) * 30  # 30% range for BW
+                    update_progress_gui(65 + progress)
                     chunk_index += chunk_group_size
 
             except Exception as e:
