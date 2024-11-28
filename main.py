@@ -15,7 +15,9 @@ import pandas as pd
 import darkdetect
 from functools import partial
 
-from src import connector_functions, bw_upload_only, metrics, tkmd, input_config
+from src import connector_functions, bw_upload_only, metrics, input_config
+from src.gui_utils import tkmd
+from src.gui_utils.collapsed import CollapsingHeader
 
 
 class SentimentAnalysisApp:
@@ -23,8 +25,7 @@ class SentimentAnalysisApp:
         self.master = master
         self.master.minsize(450, 200)
         self.master.title("Sentiment Analysis Tool")
-        icon_path = self.resource_path("themes/pie_icon.ico")
-        self.master.iconbitmap(icon_path)
+        self.master.resizable(False, False)
 
         # initialize styles
         self.init_styles()
@@ -34,8 +35,11 @@ class SentimentAnalysisApp:
 
         # Create and setup GUI components
         self.create_gui()
-
+        
         self.config_manager = input_config.ConfigManager()
+        
+        icon_path = self.resource_path("themes/pie_icon.ico")
+        self.master.iconbitmap(icon_path)
 
     def resource_path(self, relative_path):
         try:
@@ -69,6 +73,18 @@ class SentimentAnalysisApp:
         self.default_font = tkFont.nametofont("TkDefaultFont")
         self.default_font.configure(family="Segoe UI")
 
+        # Add transparent button style
+        self.style.configure(
+            "Transparent.TButton",
+            background=self.style.colors.bg,
+            borderwidth=0,
+            highlightthickness=0,
+            relief="flat"
+        )
+
+        # Remove hover effect
+        self.style.map("Transparent.TButton", background=[("active", self.style.colors.bg)])
+
     def init_variables(self):
         self.input_var = tk.StringVar()
         self.input_var.trace_add("write", self.check_file_exists)
@@ -95,7 +111,7 @@ class SentimentAnalysisApp:
             side=tk.LEFT, padx=10, pady=10, expand=True, fill=tk.BOTH
         )
         self.main_frame = ttk.Frame(self.master)
-        self.main_frame.pack(side=tk.LEFT, padx=10, pady=10, expand=True, fill=tk.BOTH)
+        self.main_frame.pack(side='left', padx=10, pady=10, expand=True, fill='both')
         self.advanced_frame = ttk.Frame(self.master)
 
         # Create GUI components
@@ -103,18 +119,19 @@ class SentimentAnalysisApp:
         self.create_notebook()
         self.create_sentiment_tab()
         self.create_bw_tab_run_button()
-        self.create_progress_bar()
-        self.create_log_area()
+        self.create_progress_frame()
         self.create_instructions()
         self.create_advanced_options()
 
     def create_input_section(self):
+        self.input_section = ttk.Frame(self.main_frame)
+        self.input_section.pack()
         input_label = tk.Label(
-            self.main_frame, text="Input File:", font=("Segoe UI", 12)
+            self.input_section, text="Input File:", font=("Segoe UI", 12)
         )
         input_label.pack()
 
-        input_frame = ttk.Frame(self.main_frame)
+        input_frame = ttk.Frame(self.input_section)
         input_frame.pack()
 
         self.input_entry = tk.Entry(
@@ -152,6 +169,12 @@ class SentimentAnalysisApp:
         self.create_customization_section()
         self.create_model_selection()
         self.create_run_button()
+
+    def create_progress_frame(self):
+        self.progress_frame = ttk.Frame(self.main_frame)
+        self.progress_frame.pack(fill=tk.BOTH, expand=True)
+        self.create_progress_bar()
+        self.create_log_area()
 
     def create_output_section(self):
         output_label = tk.Label(
@@ -199,15 +222,7 @@ class SentimentAnalysisApp:
             style="Roundtoggle.Toolbutton",
         )
         bw_checkbox.pack(pady=(0, 0))
-
-        advanced_checkbox = ttk.Checkbutton(
-            self.sentiment_tab_frame,
-            text=" Advanced Options",
-            variable=self.advanced_checkbox_var,
-            style="Roundtoggle.Toolbutton",
-            command=self.on_advanced_checkbox,
-        )
-        advanced_checkbox.pack(pady=(15, 0))
+        self.create_advanced_header()
 
     def create_customization_section(self):
         customization_label = tk.Label(
@@ -394,21 +409,21 @@ class SentimentAnalysisApp:
         self.bw_api_metrics_button.pack(pady=(20, 12))
 
     def create_progress_bar(self):
-        self.placeholder_frame = ttk.Frame(self.main_frame, height=11, width=450)
-        self.placeholder_frame.pack(pady=(5, 0), padx=(5, 5), fill=tk.X)
+        self.placeholder_frame = ttk.Frame(self.progress_frame, height=11, width=450)
+        self.placeholder_frame.pack(pady=(5, 0), fill=tk.X)
         self.placeholder_frame.pack_propagate(False)
 
     def create_log_area(self):
-        log_label = ttk.Label(
-            self.main_frame, text="Log Messages:", font=("Segoe UI", 12)
+        self.log_label = ttk.Label(
+            self.progress_frame, text="Log Messages:", font=("Segoe UI", 12)
         )
-        log_label.pack(pady=(10, 0))
+        self.log_label.pack(pady=(10, 0))
 
         self.log_text_area = scrolledtext.ScrolledText(
-            self.main_frame, wrap=tk.WORD, width=62, height=9, font=("Segoe UI", 11)
+            self.progress_frame, wrap=tk.WORD, width=60, height=9, font=("Segoe UI", 11)
         )
         self.log_text_area.configure(state="disabled")
-        self.log_text_area.pack(pady=(2, 0))
+        self.log_text_area.pack(pady=(2, 0), expand=True, fill=tk.BOTH)
 
     def create_instructions(self):
         instructions_font = tkFont.nametofont("TkDefaultFont")
@@ -421,11 +436,13 @@ class SentimentAnalysisApp:
         instructions_text_area = tkmd.SimpleMarkdownText(
             self.instructions_frame,
             wrap=tk.WORD,
+            padding=0,
+            autohide=True,
             width=55,
             height=34,
             font=instructions_font,
         )
-        instructions_text_area.pack(fill=BOTH, expand=True)
+        instructions_text_area.pack(fill=tk.BOTH, expand=True)
 
         instructions_text = """1. Ensure your input file is a .xlsx or .csv (or .zip containing a .csv) with a "Content" or "Full Text" column (default for BW).
 * Note: Works with column headers in any of the first 20 rows (BW exports).
@@ -464,22 +481,45 @@ class SentimentAnalysisApp:
                 )
             ),
         )
-        instructions_text_area.configure(state="disabled")
+        instructions_text_area.text.configure(state="disabled")
+
+    def create_advanced_header(self):
+        self.advanced_header = CollapsingHeader(
+            self.sentiment_tab_frame,
+            text="Advanced Options",
+            resource_path_func=self.resource_path
+        )
+        self.advanced_header.pack(pady=(15, 0), fill=X)
+        self.advanced_header.bind("<<AdvancedOptionsToggled>>", self.toggle_advanced_options)
+
+    def toggle_advanced_options(self, event):
+        if self.advanced_header.is_open:
+            self.advanced_frame.pack(
+                side=tk.RIGHT, padx=(0, 10), pady=10, fill=tk.Y
+            )
+        else:
+            self.advanced_frame.pack_forget()
 
     def create_advanced_options(self):
+        self.main_frame.update_idletasks()
+        spacer_height = self.input_section.winfo_reqheight()
         # Add an empty frame at the top to account for input entry height
-        top_spacer = ttk.Frame(self.advanced_frame, height=58)
-        top_spacer.pack(side='top')
+        top_spacer = ttk.Frame(self.advanced_frame, height=spacer_height)
+        top_spacer.pack(side='top')   
         
+        
+        self.tab_height = self.sentiment_tab_frame.winfo_reqheight()
+    
         # Create notebook for advanced options
         self.advanced_notebook = ttk.Notebook(
             self.advanced_frame,
             style="advanced.TNotebook",
             takefocus=False,
-            padding=[0, 10, 0, 10]
+            padding=[0, 10, 0, 10],
+            height=self.tab_height+10
         )
-        self.advanced_notebook.pack(expand=True, fill=tk.BOTH)
-
+        self.advanced_notebook.pack(expand=True, fill=tk.Y)
+        
         # Create the advanced options tab
         advanced_tab = ttk.Frame(self.advanced_notebook)
         self.advanced_notebook.add(
@@ -537,10 +577,12 @@ class SentimentAnalysisApp:
         self.max_tokens_scale.pack(pady=(2, 0))
 
         # Add dual model section
-        self.create_dual_model_section(advanced_tab)
-        
-        # Add an empty frame at the bottom to accoutn for log text area height
-        bottom_spacer = ttk.Frame(self.advanced_frame, height=247)
+        self.create_dual_model_section(advanced_tab) 
+
+        self.log_height = self.progress_frame.winfo_reqheight()
+
+        # Add an empty frame at the bottom to account for log text area height
+        bottom_spacer = ttk.Frame(self.advanced_frame, height=self.log_height)
         bottom_spacer.pack(side='bottom')
 
 
@@ -697,15 +739,6 @@ class SentimentAnalysisApp:
             self.system_prompt_entry.pack(before=self.gpt_model_label, pady=(0, 0))
             self.user_prompt_frame.pack(before=self.gpt_model_label, pady=(5, 0))
             self.user_prompt_entry_frame.pack(before=self.gpt_model_label)
-
-    def on_advanced_checkbox(self):
-        advanced_checkbox_bool = self.advanced_checkbox_var.get()
-        if advanced_checkbox_bool:
-            self.advanced_frame.pack(
-                side=tk.RIGHT, padx=(0, 10), pady=10, expand=True, fill=tk.BOTH
-            )
-        else:
-            self.advanced_frame.pack_forget()
 
     def reset_system_prompt(self):
         self.system_prompt_entry.delete("1.0", tk.END)

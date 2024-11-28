@@ -1,14 +1,22 @@
 import re
 from tkinter import *
 import tkinter.font as tkfont
-import tkinter.scrolledtext as tkscroll
+
+import ttkbootstrap as ttk
+from ttkbootstrap.constants import *
+from ttkbootstrap.scrolled import ScrolledText
 
 
-class SimpleMarkdownText(tkscroll.ScrolledText):
+class SimpleMarkdownText(ScrolledText):
 
     def __init__(self, *args, **kwargs):
+        font = kwargs.pop('font', None)
         super().__init__(*args, **kwargs)
-        default_font = tkfont.nametofont(self.cget("font"))
+        
+        if font:
+            self.text.configure(font=font)
+        
+        default_font = tkfont.nametofont(self.text.cget("font"))
 
         em = default_font.measure("m")
         default_size = default_font.cget("size")
@@ -19,9 +27,9 @@ class SimpleMarkdownText(tkscroll.ScrolledText):
         italic_font.configure(slant="italic")
 
         # Small subset of markdown. Just enough to make text look nice.
-        self.tag_configure("**", font=bold_font)
-        self.tag_configure("*", font=italic_font)
-        self.tag_configure("_", font=italic_font)
+        self.text.tag_configure("**", font=bold_font)
+        self.text.tag_configure("*", font=italic_font)
+        self.text.tag_configure("_", font=italic_font)
         self.tag_chars = "*_"
         self.tag_char_re = re.compile(r"[*_]")
 
@@ -29,22 +37,22 @@ class SimpleMarkdownText(tkscroll.ScrolledText):
         for i in range(1, max_heading + 1):
             header_font = tkfont.Font(**default_font.configure())
             header_font.configure(size=int(default_size * i + 3), weight="bold")
-            self.tag_configure(
+            self.text.tag_configure(
                 "#" * (max_heading - i), font=header_font, spacing3=default_size
             )
 
         lmargin2 = em + default_font.measure("\u2022 ")
-        self.tag_configure("bullet", lmargin1=em, lmargin2=lmargin2)
+        self.text.tag_configure("bullet", lmargin1=em, lmargin2=lmargin2)
         lmargin2 = em + default_font.measure("1. ")
-        self.tag_configure("numbered", lmargin1=em, lmargin2=lmargin2)
+        self.text.tag_configure("numbered", lmargin1=em, lmargin2=lmargin2)
 
         self.numbered_index = 1
 
     def insert_bullet(self, position, text):
-        self.insert(position, f"\u2022 {text}", "bullet")
+        self.text.insert(position, f"\u2022 {text}", "bullet")
 
     def insert_numbered(self, position, text):
-        self.insert(position, f"{self.numbered_index}. {text}", "numbered")
+        self.text.insert(position, f"{self.numbered_index}. {text}", "numbered")
         self.numbered_index += 1
 
     def insert_markdown(self, mkd_text):
@@ -57,19 +65,19 @@ class SimpleMarkdownText(tkscroll.ScrolledText):
             if line == "":
                 # Blank lines reset numbering
                 self.numbered_index = 1
-                self.insert("end", line)
+                self.text.insert("end", line)
 
             elif line.startswith("#"):
                 tag = re.match(r"(#+) (.*)", line)
                 line = tag.group(2)
-                self.insert("end", line, tag.group(1))
+                self.text.insert("end", line, tag.group(1))
 
             elif line.startswith("* "):
                 line = line[2:]
                 self.insert_bullet("end", line)
 
             elif not self.tag_char_re.search(line):
-                self.insert("end", line)
+                self.text.insert("end", line)
 
             else:
                 tag = None
@@ -81,11 +89,11 @@ class SimpleMarkdownText(tkscroll.ScrolledText):
                         continue
                     if c in self.tag_chars and (not tag or c == tag[0]):
                         if tag:
-                            self.insert("end", "".join(accumulated), tag)
+                            self.text.insert("end", "".join(accumulated), tag)
                             accumulated = []
                             tag = None
                         else:
-                            self.insert("end", "".join(accumulated))
+                            self.text.insert("end", "".join(accumulated))
                             accumulated = []
                             tag = c
                             next_i = i + 1
@@ -95,9 +103,9 @@ class SimpleMarkdownText(tkscroll.ScrolledText):
 
                     else:
                         accumulated.append(c)
-                self.insert("end", "".join(accumulated), tag)
+                self.text.insert("end", "".join(accumulated), tag)
 
-            self.insert("end", "\n")
+            self.text.insert("end", "\n")
 
 
 class HyperlinkManager:
