@@ -4,6 +4,7 @@ Sentiment-Analysis-Tool.spec
 build/
 dist/
 src/__pycache__/
+src/gui_utils/__pycache__/
 gui_utils/__pycache__/
 src/api_response_logs/
 *.csv

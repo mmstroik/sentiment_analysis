@@ -3,26 +3,26 @@ import sys
 import tkinter as tk
 from tkinter import filedialog, scrolledtext
 import tkinter.font as tkFont
-from tkinter.font import nametofont
-import webbrowser
+import ctypes
 
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 from ttkbootstrap.utility import enable_high_dpi_awareness
 from ttkbootstrap.tooltip import ToolTip
 
-import pandas as pd
+
 import darkdetect
-from functools import partial
 
 from src import connector_functions, bw_upload_only, metrics, input_config
-from src.gui_utils import tkmd
 from src.gui_utils.collapsed import CollapsingHeader
+from src.gui_utils.scrolled import ScrolledText
+from src.gui_utils import instructions
 
 
 class SentimentAnalysisApp:
     def __init__(self, master):
         self.master = master
+        self.master.withdraw()
         self.master.minsize(450, 200)
         self.master.title("Sentiment Analysis Tool")
         self.master.resizable(False, False)
@@ -35,11 +35,15 @@ class SentimentAnalysisApp:
 
         # Create and setup GUI components
         self.create_gui()
-        
+
         self.config_manager = input_config.ConfigManager()
-        
+
         icon_path = self.resource_path("themes/pie_icon.ico")
         self.master.iconbitmap(icon_path)
+        
+        # Center window before showing
+        self.center_window()
+        self.master.after_idle(self.master.deiconify)
 
     def resource_path(self, relative_path):
         try:
@@ -54,36 +58,106 @@ class SentimentAnalysisApp:
         try:
             self.style = ttk.Style()
             self.style.load_user_themes(themes_path)
-
-            if darkdetect.isDark():
-                self.style.theme_use("custom-dark")
-            else:
-                self.style.theme_use("custom-light")
-
         except Exception as e:
             print(f"Error loading themes: {e}")
             self.style.theme_use("darkly")
 
-        self.style.configure("TNotebook", tabposition="n")
-        self.style.configure("advanced.TNotebook", tabposition="nw")
-        self.style.configure("Toolbutton", font=("Segoe UI", 12))
-        self.style.configure("radios.Toolbutton", font=("Segoe UI", 11), padding=5)
-        self.style.configure("run.TButton", font=("Segoe UI", 13))
-        self.style.configure("tooltip.TLabel", font=("Segoe UI", 10))
+        self.update_theme()
         self.default_font = tkFont.nametofont("TkDefaultFont")
         self.default_font.configure(family="Segoe UI")
 
-        # Add transparent button style
+    def update_theme(self, *args):
+        selected_theme = (
+            self.theme_var.get().strip() if hasattr(self, "theme_var") else "System"
+        )
+
+        if selected_theme == "System":
+            theme = "custom-dark" if darkdetect.isDark() else "custom-light"
+        elif selected_theme == "Dark":
+            theme = "custom-dark"
+        else:  # Light
+            theme = "custom-light"
+
+        try:
+            self.style.theme_use(theme)
+            self.set_titlebar_color(theme)
+
+        except Exception as e:
+            self.style.theme_use("darkly")
+            print(f"Error setting theme: {e}")
+
+        # Update styles to match theme
+        self.style.configure("TNotebook", tabposition="n")
+        self.style.configure("Toolbutton", font=("Segoe UI", 12))
+        self.style.configure("run.TButton", font=("Segoe UI", 13))
+        self.style.configure("tooltip.TLabel", font=("Segoe UI", 10))
+        self.style.configure(
+            "radios.Toolbutton",
+            font=("Segoe UI", 11),
+            padding=8,
+            background=self.style.colors.selectbg,
+            borderwidth=0,
+        )
         self.style.configure(
             "Transparent.TButton",
             background=self.style.colors.bg,
             borderwidth=0,
             highlightthickness=0,
-            relief="flat"
+            relief="flat",
+        )
+        self.style.map(
+            "Transparent.TButton", background=[("active", self.style.colors.bg)]
         )
 
-        # Remove hover effect
-        self.style.map("Transparent.TButton", background=[("active", self.style.colors.bg)])
+    def set_titlebar_color(self, theme):
+        if sys.platform.startswith("win"):
+            try:
+                # Store current window state and focused widget
+                current_state = self.master.state()
+                focused_widget = self.master.focus_get()
+
+                # Hide window temporarily
+                self.master.withdraw()
+                self.master.update()
+                is_dark = theme == "custom-dark"
+                hwnd = ctypes.windll.user32.GetParent(self.master.winfo_id())
+                DWMWA_USE_IMMERSIVE_DARK_MODE = 20
+                value = 1 if is_dark else 0
+
+                # Try setting the dark mode attribute
+                result = ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                    hwnd,
+                    DWMWA_USE_IMMERSIVE_DARK_MODE,
+                    ctypes.byref(ctypes.c_int(value)),
+                    ctypes.sizeof(ctypes.c_int(value)),
+                )
+
+                # If the first attempt failed, try with the pre-20H1 attribute
+                if result != 0:
+                    DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 = 19
+                    ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                        hwnd,
+                        DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1,
+                        ctypes.byref(ctypes.c_int(value)),
+                        ctypes.sizeof(ctypes.c_int(value)),
+                    )
+
+                # Restore window state
+                if current_state == "normal":
+                    self.master.deiconify()
+                elif current_state == "zoomed":
+                    self.master.state("zoomed")
+                else:
+                    self.master.state(current_state)
+
+                # Restore focus
+                if focused_widget:
+                    self.master.after(1, focused_widget.focus)
+
+            except Exception as e:
+                print(f"Failed to set titlebar color: {e}")
+                # Ensure window is shown even if there's an error
+                self.master.deiconify()
 
     def init_variables(self):
         self.input_var = tk.StringVar()
@@ -96,22 +170,23 @@ class SentimentAnalysisApp:
         self.bw_checkbox_var = tk.IntVar()
         self.advanced_checkbox_var = tk.IntVar()
         self.separate_company_tags_checkbox_var = tk.IntVar()
-        
+
         self.logprob_checkbox_var = tk.IntVar()
         self.temperature_var = tk.DoubleVar(value=0.3)
         self.max_tokens_var = tk.DoubleVar(value=1)
         self.dual_model_var = tk.BooleanVar(value=False)
         self.second_model_var = tk.StringVar(value=" GPT-3.5 ")
         self.split_scale_var = tk.DoubleVar(value=50)
+        self.theme_var = tk.StringVar(value=" System ")
 
     def create_gui(self):
         # Main frames
-        self.instructions_frame = ttk.Frame(self.master)
-        self.instructions_frame.pack(
+        instructions_frame = ttk.Frame(self.master)
+        instructions_frame.pack(
             side=tk.LEFT, padx=10, pady=10, expand=True, fill=tk.BOTH
         )
         self.main_frame = ttk.Frame(self.master)
-        self.main_frame.pack(side='left', padx=10, pady=10, expand=True, fill='both')
+        self.main_frame.pack(side="left", padx=10, pady=10, expand=True, fill="both")
         self.advanced_frame = ttk.Frame(self.master)
 
         # Create GUI components
@@ -120,7 +195,7 @@ class SentimentAnalysisApp:
         self.create_sentiment_tab()
         self.create_bw_tab_run_button()
         self.create_progress_frame()
-        self.create_instructions()
+        instructions.create_instructions(instructions_frame)
         self.create_advanced_options()
 
     def create_input_section(self):
@@ -172,7 +247,7 @@ class SentimentAnalysisApp:
 
     def create_progress_frame(self):
         self.progress_frame = ttk.Frame(self.main_frame)
-        self.progress_frame.pack(fill=tk.BOTH, expand=True)
+        self.progress_frame.pack(fill=tk.BOTH)
         self.create_progress_bar()
         self.create_log_area()
 
@@ -223,6 +298,17 @@ class SentimentAnalysisApp:
         )
         bw_checkbox.pack(pady=(0, 0))
         self.create_advanced_header()
+
+    def create_advanced_header(self):
+        self.advanced_header = CollapsingHeader(
+            self.sentiment_tab_frame,
+            text="Advanced Options",
+            resource_path_func=self.resource_path,
+        )
+        self.advanced_header.pack(pady=(15, 0), fill="x")
+        self.advanced_header.bind(
+            "<<AdvancedOptionsToggled>>", self.toggle_advanced_options
+        )
 
     def create_customization_section(self):
         customization_label = tk.Label(
@@ -378,18 +464,21 @@ class SentimentAnalysisApp:
             text="Run Sentiment Analysis",
             style="run.TButton",
             command=self.start_sentiment_analysis,
+            takefocus=False,
         )
         self.sentiment_run_button.pack(pady=(30, 12), side="bottom")
 
     def create_bw_tab_run_button(self):
+        self.bw_tab_frame.update_idletasks()
+        # get tab width
+        tab_width = self.sentiment_tab_frame.winfo_reqwidth()
         # Add the new label
         note_label = ttk.Label(
             self.bw_tab_frame,
-            text="Note: This feature does not code sentiment and is only meant for\n"
-            "updating BW with already-coded output files.",
+            text="Note: This feature does not code sentiment and is only meant for updating BW with already-coded output files.",
             font=("Segoe UI", 10),
             justify="center",
-            wraplength=400,
+            wraplength=(tab_width * 2) / 3,
         )
         note_label.pack(pady=(10, 5))
 
@@ -398,6 +487,7 @@ class SentimentAnalysisApp:
             text="Upload to Brandwatch",
             style="run.TButton",
             command=self.start_bw_upload,
+            takefocus=False,
         )
         self.bw_upload_button.pack(pady=(5, 12))
         self.bw_api_metrics_button = ttk.Button(
@@ -405,6 +495,7 @@ class SentimentAnalysisApp:
             text="Get BW API Metrics",
             style="run.TButton",
             command=self.start_metrics_analysis,
+            takefocus=False,
         )
         self.bw_api_metrics_button.pack(pady=(20, 12))
 
@@ -418,118 +509,73 @@ class SentimentAnalysisApp:
             self.progress_frame, text="Log Messages:", font=("Segoe UI", 12)
         )
         self.log_label.pack(pady=(10, 0))
-
-        self.log_text_area = scrolledtext.ScrolledText(
-            self.progress_frame, wrap=tk.WORD, width=60, height=9, font=("Segoe UI", 11)
-        )
-        self.log_text_area.configure(state="disabled")
-        self.log_text_area.pack(pady=(2, 0), expand=True, fill=tk.BOTH)
-
-    def create_instructions(self):
-        instructions_font = tkFont.nametofont("TkDefaultFont")
-        instructions_font.configure(size=12)
-        instructions_label = tk.Label(
-            self.instructions_frame, text="Instructions:", font=("Segoe UI", 12)
-        )
-        instructions_label.pack(fill="x")
-
-        instructions_text_area = tkmd.SimpleMarkdownText(
-            self.instructions_frame,
+        log_font = tkFont.nametofont("TkDefaultFont")
+        log_font.configure(size=12)
+        self.log_text_area = ScrolledText(
+            self.progress_frame,
             wrap=tk.WORD,
             padding=0,
+            bootstyle="round",
             autohide=True,
-            width=55,
-            height=34,
-            font=instructions_font,
+            width=60,
+            height=9,
+            font=log_font,
         )
-        instructions_text_area.pack(fill=tk.BOTH, expand=True)
-
-        instructions_text = """1. Ensure your input file is a .xlsx or .csv (or .zip containing a .csv) with a "Content" or "Full Text" column (default for BW).
-* Note: Works with column headers in any of the first 20 rows (BW exports).
-
-2. Click on the "Browse" button next to "Input File" and select the file containing the mentions.
-* Note: If the file is saved to OneDrive/SharePoint, close it before running the tool.
-
-3. Click on the "Browse" button next to "Output File" and create a new filename for the output.
-
-4. (Optional): Update sentiment values in Brandwatch (will also mark updated mentions as "Checked" in BW).
-* Requires 'Query Id' and 'Resource Id' columns in input file
-
-5. (Optional) Select a customization option:
-* Default: Use the default system and user prompts.
-* Company: Specify a single company name.
-* Multi-Company: Specify Brandwatch company categories
-* Custom: Provide custom system and user prompts
-
-6. (Optional) Select a model:
-* GPT-3.5 (Legacy): Less accurate but much less neutral
-* GPT-4o mini: Best for larger batches and/or shorter text.
-* GPT-4o: Best for smaller batches and/or long text.
-            
-7. Click "Run Sentiment Analysis. A success message will be displayed when finished.
-"""
-        instructions_text_area.insert_markdown(instructions_text)
-
-        hyperlink = tkmd.HyperlinkManager(instructions_text_area)
-        instructions_text_area.insert(
-            "end",
-            "Full Documentation/Instructions",
-            hyperlink.add(
-                partial(
-                    webbrowser.open,
-                    "https://docs.google.com/document/d/1R5qPnn5xbGOv3aZk6Cf5egfvrMVJ6TI2v_xg6FiFqp8/edit",
-                )
-            ),
-        )
-        instructions_text_area.text.configure(state="disabled")
-
-    def create_advanced_header(self):
-        self.advanced_header = CollapsingHeader(
-            self.sentiment_tab_frame,
-            text="Advanced Options",
-            resource_path_func=self.resource_path
-        )
-        self.advanced_header.pack(pady=(15, 0), fill=X)
-        self.advanced_header.bind("<<AdvancedOptionsToggled>>", self.toggle_advanced_options)
+        self.log_text_area.text.configure(state="disabled")
+        self.log_text_area.pack(pady=(2, 0), expand=True, fill=tk.BOTH)
 
     def toggle_advanced_options(self, event):
         if self.advanced_header.is_open:
-            self.advanced_frame.pack(
-                side=tk.RIGHT, padx=(0, 10), pady=10, fill=tk.Y
-            )
+            self.advanced_frame.pack(side=tk.RIGHT, padx=(10, 10), pady=10, fill=tk.Y)
         else:
             self.advanced_frame.pack_forget()
 
     def create_advanced_options(self):
+        theme_frame = tk.Frame(self.advanced_frame)
+        theme_frame.pack()
+
+        theme_label = ttk.Label(theme_frame, text="Theme:")
+        theme_label.pack()
+        for option in [" System ", " Light ", " Dark "]:
+            theme_radio_button = ttk.Radiobutton(
+                theme_frame,
+                text=option,
+                value=option,
+                variable=self.theme_var,
+                style="radios.Toolbutton",
+                command=self.update_theme,
+            )
+            theme_radio_button.pack(side="left")
+
         self.main_frame.update_idletasks()
-        spacer_height = self.input_section.winfo_reqheight()
-        # Add an empty frame at the top to account for input entry height
+        notebook_frame_height = self.sentiment_tab_frame.winfo_reqheight()
+
+        self.advanced_frame.update_idletasks()
+
+        tab_height = self.get_tab_height()
+        spacer_height = tab_height
+
+        # Add an empty frame
         top_spacer = ttk.Frame(self.advanced_frame, height=spacer_height)
-        top_spacer.pack(side='top')   
-        
-        
-        self.tab_height = self.sentiment_tab_frame.winfo_reqheight()
-    
+        top_spacer.pack(side="top")
+
         # Create notebook for advanced options
-        self.advanced_notebook = ttk.Notebook(
+        self.advanced_options_label_frame = ttk.LabelFrame(
             self.advanced_frame,
-            style="advanced.TNotebook",
-            takefocus=False,
-            padding=[0, 10, 0, 10],
-            height=self.tab_height+10
-        )
-        self.advanced_notebook.pack(expand=True, fill=tk.Y)
-        
-        # Create the advanced options tab
-        advanced_tab = ttk.Frame(self.advanced_notebook)
-        self.advanced_notebook.add(
-            advanced_tab,
             text="Advanced Options",
-            padding=[20, 5, 20, 5]
+            takefocus=False,
+            height=notebook_frame_height,
         )
-        
+        self.advanced_options_label_frame.pack(expand=True, fill=tk.Y)
+
+        # Create the advanced options content frame
+        advanced_options = ttk.Frame(
+            self.advanced_options_label_frame, padding=[20, 5, 20, 5]
+        )
+        advanced_options.pack()
+
         advanced_reset_button = tk.Button(
-            advanced_tab,
+            advanced_options,
             text="Reset to Defaults",
             font=("Segoe UI", 10),
             command=self.reset_advanced_options,
@@ -537,8 +583,8 @@ class SentimentAnalysisApp:
         advanced_reset_button.pack(pady=(10, 0))
 
         self.logprob_checkbox = ttk.Checkbutton(
-            advanced_tab,
-            text=" Output probabilities for each sentiment prediction",
+            advanced_options,
+            text=" Output sentiment probabilities",
             variable=self.logprob_checkbox_var,
             style="Roundtoggle.Toolbutton",
         )
@@ -546,11 +592,11 @@ class SentimentAnalysisApp:
 
         # temperature slider
         self.temperature_label = tk.Label(
-            advanced_tab, text="Temperature: 0.3", font=("Segoe UI", 12)
+            advanced_options, text="Temperature: 0.3", font=("Segoe UI", 12)
         )
         self.temperature_label.pack(pady=(15, 0))
         self.temperature_scale = ttk.Scale(
-            advanced_tab,
+            advanced_options,
             length=200,
             from_=0,
             to=2,
@@ -562,11 +608,11 @@ class SentimentAnalysisApp:
 
         # max tokens slider
         self.max_tokens_label = tk.Label(
-            advanced_tab, text="Max Completion Tokens: 1", font=("Segoe UI", 12)
+            advanced_options, text="Max Completion Tokens: 1", font=("Segoe UI", 12)
         )
         self.max_tokens_label.pack(pady=(15, 0))
         self.max_tokens_scale = ttk.Scale(
-            advanced_tab,
+            advanced_options,
             length=200,
             from_=1,
             to=20,
@@ -577,14 +623,34 @@ class SentimentAnalysisApp:
         self.max_tokens_scale.pack(pady=(2, 0))
 
         # Add dual model section
-        self.create_dual_model_section(advanced_tab) 
-
+        self.create_dual_model_section(advanced_options)
+        self.progress_frame.update_idletasks()
         self.log_height = self.progress_frame.winfo_reqheight()
-
         # Add an empty frame at the bottom to account for log text area height
-        bottom_spacer = ttk.Frame(self.advanced_frame, height=self.log_height)
-        bottom_spacer.pack(side='bottom')
+        bottom_spacer = ttk.Frame(self.advanced_frame, height=self.log_height + 10)
+        bottom_spacer.pack(side="bottom", fill=tk.Y)
 
+    def get_tab_height(self, tab_id=0):
+        temp_label = ttk.Label(self.advanced_frame, text=self.notebook.tab(1, "text"))
+        tab_style = self.style.lookup("TNotebook.Tab", "font")
+        if tab_style:
+            temp_label.configure(font=tab_style)
+        temp_label.update_idletasks()
+        height = temp_label.winfo_reqheight()
+        padding = self.style.lookup("TNotebook.Tab", "padding")
+
+        if padding:
+            # Padding can be a tuple of up to 4 values (left, top, right, bottom)
+            try:
+                pad_top = int(padding[1])
+                pad_bottom = int(padding[3] if len(padding) > 3 else padding[1])
+                height += pad_top + pad_bottom
+            except (IndexError, TypeError):
+                pass
+
+        # Clean up the temporary label
+        temp_label.destroy()
+        return height
 
     def create_dual_model_section(self, parent_frame):
         """Create the dual model selection section in the advanced options."""
@@ -595,19 +661,17 @@ class SentimentAnalysisApp:
             command=self.toggle_dual_model_options,
             style="Roundtoggle.Toolbutton",
         )
-        self.dual_model_checkbox.pack(pady=(15, 0))
-        
+        self.dual_model_checkbox.pack(pady=(20, 0))
+
         # Create frame for dual model options (initially hidden)
         self.dual_model_frame = ttk.Frame(parent_frame)
-        
+
         # Second model selection
         self.second_model_label = tk.Label(
-            self.dual_model_frame, 
-            text="Second Model:", 
-            font=("Segoe UI", 12)
+            self.dual_model_frame, text="Second Model:", font=("Segoe UI", 12)
         )
         self.second_model_label.pack()
-        
+
         model_radio_frame = tk.Frame(self.dual_model_frame)
         model_radio_frame.pack()
         for option in [" GPT-3.5 ", " GPT-4o mini ", " GPT-4o "]:
@@ -619,15 +683,15 @@ class SentimentAnalysisApp:
                 style="radios.Toolbutton",
             )
             model_radio_button.pack(side="left")
-        
+
         # Split percentage slider
         self.split_label = tk.Label(
-            self.dual_model_frame, 
-            text="First Model Percentage: 50%", 
-            font=("Segoe UI", 12)
+            self.dual_model_frame,
+            text="First Model Percentage: 50%",
+            font=("Segoe UI", 12),
         )
         self.split_label.pack(pady=(15, 0))
-        
+
         self.split_scale = ttk.Scale(
             self.dual_model_frame,
             length=200,
@@ -667,12 +731,49 @@ class SentimentAnalysisApp:
         self.dual_model_var.set(False)
         self.second_model_var.set(" GPT-3.5 ")
         self.split_scale_var.set(50)
-        
+
         # Update labels and hide dual model frame
         self.update_temperature_label(0.3)
         self.update_max_tokens_label(1)
         self.update_split_label(50)
         self.dual_model_frame.pack_forget()
+
+    def center_window(self):
+        # Temporarily show advanced frame and multi-company option
+        self.advanced_frame.pack(side=tk.RIGHT, padx=(10, 10), pady=10, fill=tk.Y)
+        self.customization_var.set(" Multi-Company ")
+        self.on_customization_selected()
+        
+        # Force window to calculate its dimensions
+        self.master.update_idletasks()
+        
+        # Get window and screen dimensions
+        window_width = self.master.winfo_reqwidth()
+        window_height = self.master.winfo_reqheight()
+        screen_width = self.master.winfo_screenwidth()
+        
+        # Get work area height (screen minus taskbar)
+        if sys.platform.startswith('win'):
+            try:
+                from ctypes import windll
+                work_area_height = windll.user32.GetSystemMetrics(17)  # SM_CYFULLSCREEN
+            except Exception as e:
+                print(f"Error getting work area height: {e}")
+                work_area_height = self.master.winfo_screenheight() - 90  # Fallback
+        else:
+            work_area_height = self.master.winfo_screenheight() - 60  # Non-Windows fallback
+        
+        # Calculate position
+        x = (screen_width - window_width) // 2
+        y = (work_area_height - window_height) // 2
+        
+        # Reset to default state
+        self.advanced_frame.pack_forget()
+        self.customization_var.set(" Default ")
+        self.on_customization_selected()
+        
+        # Set position
+        self.master.geometry(f"+{x}+{y}")
 
     # GUI EVENT HANDLING FUNCTIONS
     def browse_input_file(self):
@@ -827,9 +928,9 @@ class SentimentAnalysisApp:
 
     def log_message(self, message):
         def gui_safe_log():
-            self.log_text_area.configure(state="normal")
+            self.log_text_area.text.configure(state="normal")
             self.log_text_area.insert(tk.END, message + "\n")
-            self.log_text_area.configure(state="disabled")
+            self.log_text_area.text.configure(state="disabled")
             self.log_text_area.see(tk.END)
 
         self.master.after(0, gui_safe_log)

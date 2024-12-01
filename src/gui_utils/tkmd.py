@@ -4,7 +4,7 @@ import tkinter.font as tkfont
 
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
-from ttkbootstrap.scrolled import ScrolledText
+from .scrolled import ScrolledText
 
 
 class SimpleMarkdownText(ScrolledText):

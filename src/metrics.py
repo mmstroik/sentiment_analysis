@@ -22,6 +22,7 @@ def analyze_api_metrics(log_message, enable_button, disable_button, log_dir="api
     all_files = glob.glob(os.path.join(log_dir, "bw_api_metrics_*.csv"))
     if not all_files:
         log_message("\nNo API metrics files found!")
+        enable_button()
         return None
         
     df = pd.concat((pd.read_csv(f) for f in all_files))
