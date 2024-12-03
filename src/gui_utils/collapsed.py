@@ -37,6 +37,7 @@ class CollapsingHeader(ttk.Frame):
             text=text,
         )
         self.title.pack(side=tk.LEFT)
+        self.title.bind("<Button-1>", lambda e: self.toggle())
 
         # Toggle button
         self.toggle_button = ttk.Button(

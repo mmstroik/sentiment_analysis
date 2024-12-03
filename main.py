@@ -94,7 +94,7 @@ class SentimentAnalysisApp:
         self.style.configure(
             "radios.Toolbutton",
             font=("Segoe UI", 11),
-            padding=8,
+            padding=7,
             background=self.style.colors.selectbg,
             borderwidth=0,
         )
@@ -168,7 +168,6 @@ class SentimentAnalysisApp:
         self.customization_var = tk.StringVar(value=" Default ")
         self.gpt_model_var = tk.StringVar(value=" GPT-4o mini ")
         self.bw_checkbox_var = tk.IntVar()
-        self.advanced_checkbox_var = tk.IntVar()
         self.separate_company_tags_checkbox_var = tk.IntVar()
 
         self.logprob_checkbox_var = tk.IntVar()
@@ -548,16 +547,22 @@ class SentimentAnalysisApp:
             theme_radio_button.pack(side="left")
 
         self.main_frame.update_idletasks()
-        notebook_frame_height = self.sentiment_tab_frame.winfo_reqheight()
-
         self.advanced_frame.update_idletasks()
+        theme_frame.update_idletasks()
 
+        input_height = self.input_section.winfo_reqheight()
+        theme_height = theme_frame.winfo_reqheight()
+        input_minus_theme = input_height - theme_height
+        theme_label_height = theme_label.winfo_reqheight()
+        
         tab_height = self.get_tab_height()
-        spacer_height = tab_height
+        spacer_height = tab_height + input_minus_theme - (theme_label_height / 2)
 
         # Add an empty frame
         top_spacer = ttk.Frame(self.advanced_frame, height=spacer_height)
         top_spacer.pack(side="top")
+        
+        notebook_frame_height = self.sentiment_tab_frame.winfo_reqheight()
 
         # Create notebook for advanced options
         self.advanced_options_label_frame = ttk.LabelFrame(
@@ -631,20 +636,29 @@ class SentimentAnalysisApp:
         bottom_spacer.pack(side="bottom", fill=tk.Y)
 
     def get_tab_height(self, tab_id=0):
-        temp_label = ttk.Label(self.advanced_frame, text=self.notebook.tab(1, "text"))
+        # Create temporary label to measure tab text height
+        temp_label = ttk.Label(self.advanced_frame, text=self.notebook.tab(tab_id, "text"))
         tab_style = self.style.lookup("TNotebook.Tab", "font")
         if tab_style:
             temp_label.configure(font=tab_style)
-        temp_label.update_idletasks()
+        temp_label.update_idletasks()   
         height = temp_label.winfo_reqheight()
-        padding = self.style.lookup("TNotebook.Tab", "padding")
 
-        if padding:
-            # Padding can be a tuple of up to 4 values (left, top, right, bottom)
+        tab_padding = self.style.lookup("TNotebook.Tab", "padding")
+        if tab_padding:
             try:
-                pad_top = int(padding[1])
-                pad_bottom = int(padding[3] if len(padding) > 3 else padding[1])
+                pad_top = int(tab_padding[1])
+                pad_bottom = int(tab_padding[3] if len(tab_padding) > 3 else tab_padding[1])
                 height += pad_top + pad_bottom
+            except (IndexError, TypeError):
+                pass
+
+        # Get notebook padding
+        notebook_padding = self.notebook.cget("padding")
+        if notebook_padding:
+            try:
+                nb_top_padding = notebook_padding[1]  # Get top padding value
+                height += nb_top_padding
             except (IndexError, TypeError):
                 pass
 
@@ -695,48 +709,13 @@ class SentimentAnalysisApp:
         self.split_scale = ttk.Scale(
             self.dual_model_frame,
             length=200,
-            from_=10,
-            to=90,
+            from_=5,
+            to=95,
             orient="horizontal",
             variable=self.split_scale_var,
             command=self.update_split_label,
         )
         self.split_scale.pack(pady=(2, 0))
-
-    def update_temperature_label(self, value):
-        formatted_value = "{:.1f}".format(
-            float(value)
-        )  # Round to 1 decimal place for display
-        self.temperature_label.config(text=f"Temperature: {formatted_value}")
-
-    def update_max_tokens_label(self, value):
-        formatted_value = str(int(float(value)))  # Convert to whole integer
-        self.max_tokens_label.config(text=f"Max Completion Tokens: {formatted_value}")
-
-    def toggle_dual_model_options(self):
-        if self.dual_model_var.get():
-            self.dual_model_frame.pack(pady=(10, 0))
-        else:
-            self.dual_model_frame.pack_forget()
-
-    def update_split_label(self, value):
-        self.split_label.config(text=f"First Model Percentage: {int(float(value))}%")
-
-    def reset_advanced_options(self):
-        """Reset all advanced options to their default values."""
-        # Reset variables to defaults
-        self.logprob_checkbox_var.set(0)
-        self.temperature_var.set(0.3)
-        self.max_tokens_var.set(1)
-        self.dual_model_var.set(False)
-        self.second_model_var.set(" GPT-3.5 ")
-        self.split_scale_var.set(50)
-
-        # Update labels and hide dual model frame
-        self.update_temperature_label(0.3)
-        self.update_max_tokens_label(1)
-        self.update_split_label(50)
-        self.dual_model_frame.pack_forget()
 
     def center_window(self):
         # Temporarily show advanced frame and multi-company option
@@ -851,6 +830,41 @@ class SentimentAnalysisApp:
         )
         self.user_prompt_entry.delete(0, tk.END)
         self.user_prompt_entry.insert(tk.END, "Text:")
+
+    def update_temperature_label(self, value):
+        formatted_value = "{:.1f}".format(
+            float(value)
+        )  # Round to 1 decimal place for display
+        self.temperature_label.config(text=f"Temperature: {formatted_value}")
+
+    def update_max_tokens_label(self, value):
+        formatted_value = str(int(float(value)))  # Convert to whole integer
+        self.max_tokens_label.config(text=f"Max Completion Tokens: {formatted_value}")
+
+    def toggle_dual_model_options(self):
+        if self.dual_model_var.get():
+            self.dual_model_frame.pack(pady=(10, 0))
+        else:
+            self.dual_model_frame.pack_forget()
+
+    def update_split_label(self, value):
+        self.split_label.config(text=f"First Model Percentage: {int(float(value))}%")
+
+    def reset_advanced_options(self):
+        """Reset all advanced options to their default values."""
+        # Reset variables to defaults
+        self.logprob_checkbox_var.set(0)
+        self.temperature_var.set(0.3)
+        self.max_tokens_var.set(1)
+        self.dual_model_var.set(False)
+        self.second_model_var.set(" GPT-3.5 ")
+        self.split_scale_var.set(50)
+
+        # Update labels and hide dual model frame
+        self.update_temperature_label(0.3)
+        self.update_max_tokens_label(1)
+        self.update_split_label(50)
+        self.dual_model_frame.pack_forget()
 
     def start_sentiment_analysis(self):
         self.config_manager.update_sentiment_config(
