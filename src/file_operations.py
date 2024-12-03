@@ -9,9 +9,18 @@ def check_file_paths(input_file, output_file):
         raise ValueError("Please provide both input and output file paths.")
     if not os.path.exists(input_file):
         raise ValueError(f"The file '{os.path.basename(input_file)}' does not exist.")
+    
+    if not os.path.splitext(output_file)[1]:
+        output_file += ".csv" # default to .csv
+    
+    if not os.path.dirname(output_file): # prepend the input file's directory
+        output_file = os.path.join(os.path.dirname(input_file), output_file)
+    
     output_file_extension = os.path.splitext(output_file)[1]
     if output_file_extension not in [".xlsx", ".csv"]:
         raise ValueError("Output file must be a .xlsx or .csv file.")
+    
+    return output_file
 
 
 def read_file(input_file, log_message):

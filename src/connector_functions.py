@@ -30,7 +30,7 @@ def setup_sentiment_analysis(
     disable_button,
 ):
     try:
-        file_operations.check_file_paths(config.input_file, config.output_file)
+        config.output_file = file_operations.check_file_paths(config.input_file, config.output_file)
     except ValueError as e:
         handle_error(log_message, enable_button, str(e))
         return
