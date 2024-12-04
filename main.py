@@ -777,10 +777,25 @@ class SentimentAnalysisApp:
         self.output_entry.insert(0, file_path)
 
     def check_file_exists(self, *args):
-        file_path = self.output_var.get()
-        if os.path.isfile(file_path):
+        output_path = self.output_var.get()
+        input_path = self.input_var.get()
+        
+        # If output path is empty, no warning needed yet
+        if not output_path:
+            self.warning_label.config(text="")
+            return
+        
+        # Apply the same default logic as in file_operations.py
+        if not os.path.splitext(output_path)[1]:
+            output_path += ".csv"
+        
+        if not os.path.dirname(output_path) and input_path:
+            output_path = os.path.join(os.path.dirname(input_path), output_path)
+        
+        if os.path.isfile(output_path):
             self.warning_label.config(
-                text="Warning: output file exists and will be overwritten.", fg="red"
+                text=f"Warning: '{os.path.basename(output_path)}' exists and will be overwritten.", 
+                fg="red"
             )
         else:
             self.warning_label.config(text="")
