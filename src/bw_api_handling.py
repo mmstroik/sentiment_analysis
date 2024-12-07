@@ -6,6 +6,7 @@ from enum import Enum
 
 import aiohttp
 import pandas as pd
+import socket
 
 from . import metrics
 from .secrets.keys import BW_API_KEY, PROJECT_ID
@@ -19,6 +20,10 @@ BATCH_SIZE = 1360
 TIMEOUT_ERROR_CODE = 100
 
 MAX_CONCURRENT_REQUESTS = 5
+
+TCP_CONNECTOR_LIMIT = 100
+CONNECT_TIMEOUT = 30
+TOTAL_TIMEOUT = 60
 
 
 class BWError(Enum):
@@ -47,7 +52,18 @@ async def async_update_bw_sentiment(
     chunk_index = 0
     backoff_time = 60  # Start with 1 minute backoff
 
-    async with aiohttp.ClientSession() as session:
+    # Modified ClientSession creation with TCP settings
+    connector = aiohttp.TCPConnector(
+        limit=TCP_CONNECTOR_LIMIT,
+        force_close=True,
+        enable_cleanup_closed=True
+    )
+    timeout = aiohttp.ClientTimeout(
+        connect=CONNECT_TIMEOUT,
+        total=TOTAL_TIMEOUT
+    )
+    
+    async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
         while chunk_index < len(chunks):
             remaining_chunks = len(chunks) - chunk_index
             chunk_group_size = min(MAX_CONCURRENT_REQUESTS, remaining_chunks)
@@ -195,6 +211,16 @@ async def async_bw_request(
             metrics.log_api_response("success", http_response_time, total_response_time, response.status, data=data)
             return BWError.SUCCESS, len(json.loads(data))
 
+    except asyncio.TimeoutError as e:
+        total_response_time = time.time() - start_time
+        print(f"Request timed out. Total response time: {total_response_time:.2f}s")
+        metrics.log_api_response("timeout", http_response_time=0, total_response_time=total_response_time, data=data, error=e)
+        return BWError.TIMEOUT, 0
+    except (socket.gaierror, ConnectionError, aiohttp.ClientOSError) as e:
+        total_response_time = time.time() - start_time
+        print(f"Connection error: {str(e)}. Total response time: {total_response_time:.2f}s")
+        metrics.log_api_response("connection_error", http_response_time=0, total_response_time=total_response_time, data=data, error=e)
+        return BWError.TRANSIENT, 0
     except Exception as e:
         total_response_time = time.time() - start_time
         print(f"Failed to send request. Total response time: {total_response_time:.2f}s")
