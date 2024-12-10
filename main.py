@@ -1,21 +1,23 @@
 import os
 import sys
 import tkinter as tk
-from tkinter import filedialog, scrolledtext
+from tkinter import filedialog, messagebox
 import tkinter.font as tkFont
 import ctypes
+import asyncio
+import threading
 
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 from ttkbootstrap.utility import enable_high_dpi_awareness
 from ttkbootstrap.tooltip import ToolTip
 
-
 import darkdetect
 
 from src import connector_functions, bw_upload_only, metrics, input_config
 from src.gui_utils.collapsed import CollapsingHeader
 from src.gui_utils.scrolled import ScrolledText
+from src.gui_utils.bw_category_handler import BWCategoryHandler
 from src.gui_utils import instructions
 
 
@@ -43,7 +45,23 @@ class SentimentAnalysisApp:
         
         # Center window before showing
         self.center_window()
-        self.master.after_idle(self.master.deiconify)
+        
+        def on_idle():
+            self.master.deiconify()
+            self.master.after(1000, self.init_categories)
+                    
+        self.master.after_idle(on_idle)
+
+    def init_categories(self):
+        async def async_init():
+            try:
+                self.bw_category_handler = BWCategoryHandler(self.log_message)
+                await self.load_categories()
+            except Exception as e:
+                self.log_message(f"Error initializing db: {e}")
+
+        # Create a new event loop in a separate thread to not block the GUI
+        self.run_async_operation(async_init())
 
     def resource_path(self, relative_path):
         try:
@@ -108,7 +126,7 @@ class SentimentAnalysisApp:
         self.style.map(
             "Transparent.TButton", background=[("active", self.style.colors.bg)]
         )
-
+        
     def set_titlebar_color(self, theme):
         if sys.platform.startswith("win"):
             try:
@@ -342,29 +360,53 @@ class SentimentAnalysisApp:
 
     def create_multi_company_section(self):
         self.multi_company_frame = tk.Frame(self.sentiment_tab_frame)
-
+        
+        # Parent category dropdown
         company_column_label = tk.Label(
             self.multi_company_frame,
-            text="Company column (BW parent category):",
-            font=("Segoe UI", 12),
+            text="Select Company Category:",
+            font=("Segoe UI", 12)
         )
-        self.company_column_entry = tk.Entry(
-            self.multi_company_frame, width=25, font=("Segoe UI", 11)
+        
+        self.parent_category_combo = ttk.Combobox(
+            self.multi_company_frame,
+            width=25,
+            bootstyle="primary"
         )
-
+    
+        self.parent_category_combo.bind('<<ComboboxSelected>>', self.on_parent_selected)
+        # Children selection listbox
         multi_company_label = tk.Label(
             self.multi_company_frame,
-            text="List BW companies seperated by commas (in order of priority):",
-            font=("Segoe UI", 12),
+            text="Select Companies:",
+            font=("Segoe UI", 12)
         )
-        self.multi_company_entry = tk.Text(
+        
+        # Create listbox with multiple selection
+        self.companies_listbox = tk.Listbox(
             self.multi_company_frame,
             width=55,
-            height=2,
+            height=5,
             font=("Segoe UI", 11),
-            wrap=tk.WORD,
+            selectmode=tk.MULTIPLE
         )
-
+        
+        # Refresh button
+        refresh_button = tk.Button(
+            self.multi_company_frame,
+            text="↻ Refresh Categories",
+            font=("Segoe UI", 11),
+            command=self.refresh_categories
+        )
+        
+        # Pack widgets
+        company_column_label.pack(pady=(0, 0))
+        self.parent_category_combo.pack(pady=(1, 0))
+        refresh_button.pack(pady=(5, 0))
+        multi_company_label.pack(pady=(8, 0))
+        self.companies_listbox.pack(pady=(1, 0))
+        
+        # Keep the existing checkbox
         separate_company_tags_checkbox_frame = tk.Frame(self.multi_company_frame)
         separate_company_tags_checkbox = ttk.Checkbutton(
             separate_company_tags_checkbox_frame,
@@ -376,11 +418,6 @@ class SentimentAnalysisApp:
             text=" Separately code sentiment toward each company\n  mentioned in a post (adds BW tag for each company)",
             font=("Segoe UI", 12),
         )
-
-        company_column_label.pack(pady=(0, 0))
-        self.company_column_entry.pack(pady=(1, 0))
-        multi_company_label.pack(pady=(8, 0))
-        self.multi_company_entry.pack(pady=(1, 0))
         separate_company_tags_checkbox_frame.pack(pady=(10, 0))
         separate_company_tags_checkbox.pack(side=tk.LEFT)
         separate_company_tags_checkbox_label.pack(side=tk.LEFT)
@@ -882,10 +919,20 @@ class SentimentAnalysisApp:
         self.dual_model_frame.pack_forget()
 
     def start_sentiment_analysis(self):
+        # Get multi-company values if that option is selected
+        customization_option = self.customization_var.get().strip()
+        if customization_option == "Multi-Company":
+            multi_company_data = self.get_multi_company_values()
+            company_column = multi_company_data['column']
+            multi_company_text = multi_company_data['companies']
+        else:
+            company_column = self.company_column_entry.get()
+            multi_company_text = self.multi_company_entry.get("1.0", tk.END)
+
         self.config_manager.update_sentiment_config(
             input_file=self.input_entry.get(),
             output_file=self.output_entry.get(),
-            customization_option=self.customization_var.get().strip(),
+            customization_option=customization_option,
             company_entry=self.company_entry.get(),
             system_prompt=self.system_prompt_entry.get("1.0", tk.END),
             user_prompt=self.user_prompt_entry.get(),
@@ -893,11 +940,9 @@ class SentimentAnalysisApp:
             gpt_model=self.gpt_model_var.get().strip(),
             update_brandwatch=bool(self.bw_checkbox_var.get()),
             output_probabilities=bool(self.logprob_checkbox_var.get()),
-            company_column=self.company_column_entry.get(),
-            multi_company_entry=self.multi_company_entry.get("1.0", tk.END),
-            separate_company_analysis=bool(
-                self.separate_company_tags_checkbox_var.get()
-            ),
+            company_column=company_column,
+            multi_company_entry=multi_company_text,
+            separate_company_analysis=bool(self.separate_company_tags_checkbox_var.get()),
             temperature=float(self.temperature_scale.get()),
             max_tokens=int(self.max_tokens_scale.get()),
             use_dual_models=bool(self.dual_model_var.get()),
@@ -973,6 +1018,55 @@ class SentimentAnalysisApp:
         self.sentiment_run_button.config(state=tk.DISABLED)
         self.bw_upload_button.config(state=tk.DISABLED)
         self.bw_api_metrics_button.config(state=tk.DISABLED)
+        
+    def run_async_operation(self, coroutine):
+        """Helper method to run async operations in a background thread."""
+        def run_async():
+            asyncio.run(coroutine)
+        threading.Thread(target=run_async, daemon=True).start()
+
+    async def load_categories(self):
+        try:
+            parents = self.bw_category_handler.get_all_parents()
+            # Sort parents alphabetically by name
+            sorted_parents = sorted(parents, key=lambda x: x[1].lower())
+            self.parent_category_combo['values'] = [p[1] for p in sorted_parents]
+            print(f"Loaded {len(sorted_parents)} categories")
+            self.log_message(f"Loaded {len(sorted_parents)} categories")
+        except Exception as e:
+            print(f"Error loading categories: {e}")
+            self.log_message(f"Error: Failed to load categories: {str(e)}")
+
+    def on_parent_selected(self, event):
+        selected = self.parent_category_combo.get()
+        parents = self.bw_category_handler.get_all_parents()
+        parent_id = next(p[0] for p in parents if p[1] == selected)
+        
+        # Clear and populate children listbox
+        self.companies_listbox.delete(0, tk.END)
+        children = self.bw_category_handler.get_children(parent_id)
+        for child in children:
+            self.companies_listbox.insert(tk.END, child['name'])
+
+    def refresh_categories(self):
+        async def async_refresh():
+            try:
+                await self.bw_category_handler.fetch_categories()
+                await self.load_categories()
+                self.master.after(0, lambda: messagebox.showinfo("Success", "Categories refreshed successfully!"))
+            except Exception as e:
+                self.master.after(0, lambda: messagebox.showerror("Error", f"Failed to refresh categories: {str(e)}"))
+                
+        self.run_async_operation(async_refresh())
+
+    def get_multi_company_values(self):
+        parent = self.parent_category_combo.get()
+        selected_indices = self.companies_listbox.curselection()
+        selected_companies = [self.companies_listbox.get(i) for i in selected_indices]
+        return {
+            'column': parent,
+            'companies': ', '.join(selected_companies)
+        }
 
 
 if __name__ == "__main__":
