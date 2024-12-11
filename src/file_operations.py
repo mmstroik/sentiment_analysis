@@ -42,7 +42,12 @@ def read_file(input_file, log_message):
                     os.rmdir(temp_dir)
                     log_message("Cleaned up temporary extraction files")
                 except Exception as e:
-                    log_message(f"Warning: Failed to clean up temporary files: {str(e)}")
+                    # Try one more time to remove the directory even if it's empty
+                    try:
+                        os.rmdir(temp_dir)
+                        log_message("Cleaned up empty temporary directory")
+                    except Exception:
+                        log_message(f"Warning: Failed to clean up temporary files: {str(e)}")
         return df
     elif file_extension == ".csv":
         return read_csv_file(input_file, log_message)
@@ -169,7 +174,11 @@ def extract_zip_file(zip_path, log_message):
                         os.remove(file_path)
                 os.rmdir(temp_dir)
             except Exception as e:
-                log_message(f"Warning: Failed to clean up temporary files: {str(e)}")
+                # Try one more time to remove the directory even if it's empty
+                try:
+                    os.rmdir(temp_dir)
+                except Exception:
+                    log_message(f"Warning: Failed to clean up temporary files: {str(e)}")
         raise
 
 
