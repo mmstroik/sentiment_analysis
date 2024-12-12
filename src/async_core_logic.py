@@ -96,27 +96,44 @@ async def process_batches(
 
         batch = working_df.iloc[start_idx:batch_end_idx]
 
-        # Create tasks based on configuration
+        # Create tasks with indices
         if config.customization_option == "Multi-Company":
             tasks = [
-                call_openai_async(config, session, tweet, company)
-                for tweet, company in zip(batch["Full Text"], batch["AnalyzedCompany"])
+                (i, call_openai_async(config, session, tweet, company))
+                for i, (tweet, company) in enumerate(zip(batch["Full Text"], batch["AnalyzedCompany"]))
             ]
         else:
             tasks = [
-                call_openai_async(config, session, tweet)
-                for tweet in batch["Full Text"]
+                (i, call_openai_async(config, session, tweet))
+                for i, tweet in enumerate(batch["Full Text"])
             ]
 
-        # Replace gather with as_completed
-        batch_results = []
-        for coro in asyncio.as_completed(tasks):
-            result = await coro
-            batch_results.append(result)
+        # Create tasks and track their futures
+        futures_map = {}
+        batch_results = [None] * len(tasks)
+        
+        for idx, coro in tasks:
+            future = asyncio.create_task(coro)
+            futures_map[future] = idx
             
-            processed += 1
-            progress = (processed / total) * progress_scale 
-            update_progress_gui(progress + 5)  # +5 from initial setup
+        # Process results as they complete
+        pending = set(futures_map.keys())
+        while pending:
+            done, pending = await asyncio.wait(
+                pending, return_when=asyncio.FIRST_COMPLETED
+            )
+            
+            for future in done:
+                idx = futures_map[future]
+                try:
+                    result = await future
+                    batch_results[idx] = result
+                except Exception as e:
+                    batch_results[idx] = e
+                
+                processed += 1
+                progress = (processed / total) * progress_scale 
+                update_progress_gui(progress + 5)  # +5 from initial setup
 
         timer = asyncio.create_task(asyncio.sleep(RATE_LIMIT_DELAY))
         start_time = time.time()
