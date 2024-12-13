@@ -9,7 +9,7 @@ import pandas as pd
 import socket
 
 from . import metrics
-from .secrets.keys import BW_API_KEY, PROJECT_ID
+from .sa_secrets.keys import BW_API_KEY, PROJECT_ID
 
 URL = f"https://api.brandwatch.com/projects/{PROJECT_ID}/data/mentions"
 
@@ -32,6 +32,7 @@ class BWError(Enum):
     TRANSIENT = "TRANSIENT"    # 502, 503, 504, 408 - can retry immediately
     TIMEOUT = "TIMEOUT"        # API timeout - can retry immediately
     PERMANENT = "PERMANENT"    # Other API errors - don't retry
+    DUPLICATE_TAG = "DUPLICATE_TAG"  # Duplicate tag error - retry without tags
 
 
 def update_bw_sentiment(df: pd.DataFrame, update_progress_gui, log_message) -> None:
@@ -125,7 +126,7 @@ async def async_update_bw_sentiment(
 async def process_chunk_group(
     chunks: List[str],
     session: aiohttp.ClientSession,
-    log_message,
+    log_message
 ) -> tuple[int, List[str], bool]:
     """Process a group of chunks in parallel
     Returns: (successful_count, failed_chunks, needs_backoff)"""
@@ -146,6 +147,13 @@ async def process_chunk_group(
             failed_chunks.append(chunk)
         elif error_type in (BWError.TRANSIENT, BWError.TIMEOUT):
             failed_chunks.append(chunk)
+        elif error_type == BWError.DUPLICATE_TAG:
+            # Log message and retry without tags
+            log_message("Duplicate tag error detected. Retrying chunk without tags...")
+            chunk_data = json.loads(chunk)
+            for item in chunk_data:
+                item.pop("addTag", None)  # Remove addTag field
+            failed_chunks.append(json.dumps(chunk_data))
         # PERMANENT errors are dropped
 
     return successful_count, failed_chunks, needs_backoff
@@ -191,6 +199,11 @@ async def async_bw_request(
                     if error.get("code") == TIMEOUT_ERROR_CODE:
                         metrics.log_api_response("timeout", http_response_time, total_response_time, response.status, data)
                         return BWError.TIMEOUT, 0
+                    
+                    # Check for duplicate tag error
+                    if error.get("code") == 201 and "Tag with that name already exists" in error.get("message", ""):
+                        metrics.log_api_response("duplicate_tag", http_response_time, total_response_time, response.status, data)
+                        return BWError.DUPLICATE_TAG, 0
 
                 metrics.log_api_response("api_error", http_response_time, total_response_time, response.status, data, error=response_json["errors"])
                 return BWError.PERMANENT, 0

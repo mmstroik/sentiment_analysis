@@ -29,20 +29,21 @@ def read_file(input_file, log_message):
     if file_extension == ".zip":
         try:
             extracted_file = extract_zip_file(input_file, log_message)
-            temp_dir = os.path.dirname(extracted_file)
+            temp_dir = os.path.dirname(os.path.dirname(extracted_file))  # Get the root temp dir
             df = read_csv_file(extracted_file, log_message)
         finally:
-            # Ensure cleanup happens even if errors occur
             if temp_dir and os.path.exists(temp_dir):
                 try:
-                    for file in os.listdir(temp_dir):
-                        file_path = os.path.join(temp_dir, file)
-                        if os.path.isfile(file_path):
-                            os.remove(file_path)
+                    # Remove all files and subdirectories recursively
+                    for root, dirs, files in os.walk(temp_dir, topdown=False):
+                        for name in files:
+                            os.remove(os.path.join(root, name))
+                        for name in dirs:
+                            os.rmdir(os.path.join(root, name))
                     os.rmdir(temp_dir)
-                    log_message("Cleaned up temporary extraction files")
+                    print("Cleaned up temporary extraction files")
                 except Exception as e:
-                    log_message(f"Warning: Failed to clean up temporary files: {str(e)}")
+                    print(f"Warning: Failed to clean up temporary files: {str(e)}")
         return df
     elif file_extension == ".csv":
         return read_csv_file(input_file, log_message)
@@ -140,7 +141,6 @@ def modify_styles_xml(excel_file):
 
 
 def extract_zip_file(zip_path, log_message):
-    # Create temp directory with unique name to avoid conflicts
     temp_dir = os.path.join(os.path.dirname(zip_path), f"temp_extracted_{os.getpid()}")
     os.makedirs(temp_dir, exist_ok=True)
     
@@ -160,16 +160,6 @@ def extract_zip_file(zip_path, log_message):
             
             return extracted_path
     except Exception:
-        # Clean up temp_dir if zip extraction fails
-        if os.path.exists(temp_dir):
-            try:
-                for file in os.listdir(temp_dir):
-                    file_path = os.path.join(temp_dir, file)
-                    if os.path.isfile(file_path):
-                        os.remove(file_path)
-                os.rmdir(temp_dir)
-            except Exception as e:
-                log_message(f"Warning: Failed to clean up temporary files: {str(e)}")
         raise
 
 
