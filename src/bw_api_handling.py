@@ -9,7 +9,7 @@ import pandas as pd
 import socket
 
 from . import metrics
-from .secrets.keys import BW_API_KEY, PROJECT_ID
+from .sa_secrets.keys import BW_API_KEY, PROJECT_ID
 
 URL = f"https://api.brandwatch.com/projects/{PROJECT_ID}/data/mentions"
 
