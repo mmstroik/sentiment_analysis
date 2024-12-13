@@ -1,3 +1,3 @@
 [submodule "src/secrets"]
-	path = src/secrets
+	path = src/sa_secrets
 	url = https://github.com/mmstroik/sentiment-analysis-secrets.git
