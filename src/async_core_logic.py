@@ -6,13 +6,13 @@ import pandas as pd
 from aiohttp import ClientSession
 
 import tiktoken
-import tiktoken_ext
-from tiktoken_ext import openai_public
 
-from .sa_secrets.keys import OPENAI_API_KEY
+from .sa_secrets.keys import OPENAI_API_KEY, GEMINI_API_KEY
 
 RATE_LIMIT_DELAY = 30  # seconds
 
+OPENAI_API_ENDPOINT = "https://api.openai.com/v1/chat/completions"
+GEMINI_API_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 # Asynchronously processes tweets in batches (based on token counts)
 async def batch_processing_handler(
@@ -218,6 +218,71 @@ async def call_openai_async(
             else:
                 return "Error"
 
+async def call_gemini_async(
+    config,
+    session: ClientSession,
+    tweet: str,
+    company: str = None,
+    max_retries=6,
+):
+    if config.customization_option == "Multi-Company":
+        toward_company = f" toward {company}" if company else ""
+        system_prompt = config.system_prompt.format(toward_company=toward_company)
+    else:
+        system_prompt = config.system_prompt
+
+    payload = {
+        "systemInstruction": {
+            "parts": [{"text": system_prompt}]
+        },
+        "contents": [{
+            "parts": [{"text": f'{config.user_prompt} "{tweet}"\n{config.user_prompt2}'}]
+        }],
+        "generationConfig": {
+            "temperature": config.temperature,
+            "maxOutputTokens": config.max_tokens,
+            "responseLogprobs": config.output_probabilities,
+        }
+    }
+
+    url = GEMINI_API_ENDPOINT.format(model=config.model_name)
+    headers = {
+        "Content-Type": "application/json",
+    }
+
+    params = {"key": GEMINI_API_KEY}
+
+    retry_delay = 1
+    for attempt in range(max_retries):
+        try:
+            async with session.post(
+                url,
+                json=payload,
+                headers=headers,
+                params=params,
+            ) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    sentiment = result["candidates"][0]["content"]["parts"][0]["text"]
+                    
+                    if config.output_probabilities:
+                        # Get first token's logprob from logprobsResult
+                        logprob = result["candidates"][0]["logprobsResult"]["chosenCandidates"][0]["logProbability"]
+                        return sentiment.strip(), logprob
+                    else:
+                        return sentiment.strip()
+                elif attempt < max_retries - 1:
+                    await asyncio.sleep(retry_delay)
+                    retry_delay += 2
+                else:
+                    result = await response.text()
+                    return "Error"
+        except Exception as e:
+            if attempt < max_retries - 1:
+                await asyncio.sleep(retry_delay)
+                retry_delay += 2
+            else:
+                return "Error"
 
 def handle_batch_results(config, df, log_message, batch, results):
     for tweet_idx, result in zip(batch.index, results):
