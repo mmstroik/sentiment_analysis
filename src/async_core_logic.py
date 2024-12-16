@@ -13,6 +13,7 @@ RATE_LIMIT_DELAY = 30  # seconds
 
 OPENAI_API_ENDPOINT = "https://api.openai.com/v1/chat/completions"
 GEMINI_API_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+GEMINI_TOKEN_COUNT_API_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:countTokens"
 
 # Asynchronously processes tweets in batches (based on token counts)
 async def batch_processing_handler(
@@ -21,7 +22,7 @@ async def batch_processing_handler(
     update_progress_gui,
     log_message,
 ):
-    calculate_token_count(config, df, log_message)
+    await calculate_token_count(config, df, log_message)
 
     progress_scale = 60 if config.update_brandwatch else 90
     
@@ -364,7 +365,7 @@ async def calculate_token_count(config, df, log_message):
 
 
 async def calculate_gemini_token_count(config, text, session):
-    url = f"https://generativelanguage.googleapis.com/v1beta/{config.model_name}:countTokens"
+    url = GEMINI_TOKEN_COUNT_API_ENDPOINT.format(model=config.model_name)
     params = {"key": GEMINI_API_KEY}
     
     payload = {
@@ -377,7 +378,7 @@ async def calculate_gemini_token_count(config, text, session):
         if response.status == 200:
             result = await response.json()
             return result["totalTokens"]
-        return 0  # Return 0 on error, could also raise exception
+        raise Exception(f"Failed to get token count from Gemini API. Status code: {response.status}")
 
 
 def calculate_batch_size(df, batch_token_limit, batch_requests_limit, start_idx):
