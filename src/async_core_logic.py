@@ -335,7 +335,7 @@ async def calculate_token_count(config, df, log_message):
             
             # Run all token counting tasks concurrently
             token_counts = await asyncio.gather(*tasks)
-            df["Token Count"] = [count + prompt_token_count for count in token_counts]
+            df["Token Count"] = [count + prompt_token_count + 2 for count in token_counts]
 
     else:
         # OpenAI token counting logic
