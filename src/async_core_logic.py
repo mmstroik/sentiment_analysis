@@ -96,15 +96,19 @@ async def process_batches(
 
         batch = working_df.iloc[start_idx:batch_end_idx]
 
-        # Create tasks with indices
+        if config.model_name.startswith('gemini'):
+            async_func = call_gemini_async
+        else:
+            async_func = call_openai_async
+
         if config.customization_option == "Multi-Company":
             tasks = [
-                (i, call_openai_async(config, session, tweet, company))
+                (i, async_func(config, session, tweet, company))
                 for i, (tweet, company) in enumerate(zip(batch["Full Text"], batch["AnalyzedCompany"]))
             ]
         else:
             tasks = [
-                (i, call_openai_async(config, session, tweet))
+                (i, async_func(config, session, tweet))
                 for i, tweet in enumerate(batch["Full Text"])
             ]
 
