@@ -78,62 +78,6 @@ curl https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:co
       }'count_tokens.sh
 ```
 
-
-### Chat
-
-### Python
-
-```
-import google.generativeai as genai
-
-model = genai.GenerativeModel("models/gemini-1.5-flash")
-
-chat = model.start_chat(
-    history=[
-        {"role": "user", "parts": "Hi my name is Bob"},
-        {"role": "model", "parts": "Hi Bob!"},
-    ]
-)
-# Call `count_tokens` to get the input token count (`total_tokens`).
-print(model.count_tokens(chat.history))
-# ( total_tokens: 10 )
-
-response = chat.send_message(
-    "In one sentence, explain how a computer works to a young child."
-)
-
-# On the response for `send_message`, use `usage_metadata`
-# to get separate input and output token counts
-# (`prompt_token_count` and `candidates_token_count`, respectively),
-# as well as the combined token count (`total_token_count`).
-print(response.usage_metadata)
-# ( prompt_token_count: 25, candidates_token_count: 21, total_token_count: 46 )
-
-from google.generativeai.types.content_types import to_contents
-
-# You can call `count_tokens` on the combined history and content of the next turn.
-print(model.count_tokens(chat.history + to_contents("What is the meaning of life?")))
-# ( total_tokens: 56 )count_tokens.py
-```
-
-### Shell
-
-```
-curl https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:countTokens?key=$GOOGLE_API_KEY \
-    -H 'Content-Type: application/json' \
-    -X POST \
-    -d '{
-      "contents": [
-        {"role": "user",
-        "parts": [{"text": "Hi, my name is Bob."}],
-        },
-        {"role": "model",
-         "parts":[{"text": "Hi Bob"}],
-        },
-      ],
-      }'count_tokens.sh
-```
-
 ## System Instruction
 
 ### Python

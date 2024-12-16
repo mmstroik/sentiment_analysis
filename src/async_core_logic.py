@@ -303,39 +303,81 @@ def handle_batch_results(config, df, log_message, batch, results):
                 df.at[tweet_idx, "Sentiment"] = sentiment
 
 
-def calculate_token_count(config, df, log_message):
+async def calculate_token_count(config, df, log_message):
     log_message("Calculating token counts for each mention...")
-    full_user_prompt = f'{config.user_prompt} ""\n{config.user_prompt2}'
-    ENCODING = tiktoken.encoding_for_model(config.model_name)
-    if config.customization_option == "Multi-Company":
-        # Calculate token count for the longest possible prompt (with " toward Company")
-        longest_company_name = df["AnalyzedCompany"].max()
-        prompt_token_count = len(
-            ENCODING.encode(
-                config.system_prompt.format(
-                    toward_company=f" toward {longest_company_name}"
-                )
-                + full_user_prompt
-            )
-        )
-    else:
-        prompt_token_count = len(
-            ENCODING.encode(config.system_prompt + full_user_prompt)
-        )
-
-    # Find rows where 'Full Text' is not a string or is empty
+    
+    # Find and drop rows where 'Full Text' is not a string or is empty
     invalid_rows = df[
         ~df["Full Text"].apply(lambda x: isinstance(x, str) and x.strip() != "")
     ].index
-
-    # Drop these rows from the DataFrame
     df.drop(invalid_rows, inplace=True)
+    
+    full_user_prompt = f'{config.user_prompt} ""\n{config.user_prompt2}'
+    
+    if config.model_name.startswith('gemini'):
+        async with ClientSession() as session:
+            if config.customization_option == "Multi-Company":
+                longest_company_name = df["AnalyzedCompany"].max()
+                system_with_prompt = config.system_prompt.format(
+                    toward_company=f" toward {longest_company_name}"
+                ) + full_user_prompt
+            else:
+                system_with_prompt = config.system_prompt + full_user_prompt
+            
+            prompt_token_count = await calculate_gemini_token_count(
+                config, system_with_prompt, session
+            )
 
-    df["Token Count"] = df["Full Text"].apply(
-        lambda tweet: len(ENCODING.encode(tweet, allowed_special={"<|endoftext|>"}))
-        + prompt_token_count
-        + 2
-    )
+            tasks = [
+                calculate_gemini_token_count(config, tweet, session)
+                for tweet in df["Full Text"]
+            ]
+            
+            # Run all token counting tasks concurrently
+            token_counts = await asyncio.gather(*tasks)
+            df["Token Count"] = [count + prompt_token_count for count in token_counts]
+
+    else:
+        # OpenAI token counting logic
+        ENCODING = tiktoken.encoding_for_model(config.model_name)
+        
+        if config.customization_option == "Multi-Company":
+            longest_company_name = df["AnalyzedCompany"].max()
+            prompt_token_count = len(
+                ENCODING.encode(
+                    config.system_prompt.format(
+                        toward_company=f" toward {longest_company_name}"
+                    )
+                    + full_user_prompt
+                )
+            )
+        else:
+            prompt_token_count = len(
+                ENCODING.encode(config.system_prompt + full_user_prompt)
+            )
+
+        df["Token Count"] = df["Full Text"].apply(
+            lambda tweet: len(ENCODING.encode(tweet, allowed_special={"<|endoftext|>"}))
+            + prompt_token_count
+            + 2
+        )
+
+
+async def calculate_gemini_token_count(config, text, session):
+    url = f"https://generativelanguage.googleapis.com/v1beta/{config.model_name}:countTokens"
+    params = {"key": GEMINI_API_KEY}
+    
+    payload = {
+        "contents": [{
+            "parts": [{"text": text}]
+        }]
+    }
+    
+    async with session.post(url, json=payload, params=params) as response:
+        if response.status == 200:
+            result = await response.json()
+            return result["totalTokens"]
+        return 0  # Return 0 on error, could also raise exception
 
 
 def calculate_batch_size(df, batch_token_limit, batch_requests_limit, start_idx):
