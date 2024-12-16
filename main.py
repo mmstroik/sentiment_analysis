@@ -166,7 +166,7 @@ class SentimentAnalysisApp:
         self.output_var.trace_add("write", self.check_file_exists)
         self.progress_var = tk.DoubleVar()
         self.customization_var = tk.StringVar(value=" Default ")
-        self.gpt_model_var = tk.StringVar(value=" GPT-4o mini ")
+        self.model_display_name_var = tk.StringVar(value=" GPT-4o mini ")
         self.bw_checkbox_var = tk.IntVar()
         self.separate_company_tags_checkbox_var = tk.IntVar()
 
@@ -441,18 +441,42 @@ class SentimentAnalysisApp:
 
     def create_model_selection(self):
         self.gpt_model_label = tk.Label(
-            self.sentiment_tab_frame, text="GPT Model:", font=("Segoe UI", 12)
+            self.sentiment_tab_frame, text="Model:", font=("Segoe UI", 12)
         )
         self.gpt_model_label.pack(pady=(20, 0))
-        model_radio_frame = tk.Frame(self.sentiment_tab_frame)
-        model_radio_frame.pack()
-        model_options = [" GPT-3.5 ", " GPT-4o mini ", " GPT-4o "]
-        for option in model_options:
+        
+        # Create a container frame for all model options
+        self.model_container_frame = tk.Frame(self.sentiment_tab_frame)
+        self.model_container_frame.pack()
+        
+        # First row frame
+        model_radio_frame1 = tk.Frame(self.model_container_frame)
+        model_radio_frame1.pack()
+        
+        # First row options
+        first_row_options = [" GPT-3.5 ", " GPT-4o mini ", " GPT-4o "]
+        for option in first_row_options:
             model_radio_button = ttk.Radiobutton(
-                model_radio_frame,
+                model_radio_frame1,
                 text=option,
                 value=option,
-                variable=self.gpt_model_var,
+                variable=self.model_display_name_var,
+                style="radios.Toolbutton",
+            )
+            model_radio_button.pack(side="left")
+        
+        # Second row frame
+        model_radio_frame2 = tk.Frame(self.model_container_frame)
+        model_radio_frame2.pack(pady=(5, 0))
+        
+        # Second row options
+        second_row_options = [" Gemini 1.5 Flash ", " Gemini 1.5 Pro "]
+        for option in second_row_options:
+            model_radio_button = ttk.Radiobutton(
+                model_radio_frame2,
+                text=option,
+                value=option,
+                variable=self.model_display_name_var,
                 style="radios.Toolbutton",
             )
             model_radio_button.pack(side="left")
@@ -563,6 +587,7 @@ class SentimentAnalysisApp:
         top_spacer.pack(side="top")
         
         notebook_frame_height = self.sentiment_tab_frame.winfo_reqheight()
+        model_select_width = self.model_container_frame.winfo_reqwidth()
 
         # Create notebook for advanced options
         self.advanced_options_label_frame = ttk.LabelFrame(
@@ -629,6 +654,10 @@ class SentimentAnalysisApp:
 
         # Add dual model section
         self.create_dual_model_section(advanced_options)
+        # Add a spacer
+        spacer = ttk.Frame(advanced_options, width=model_select_width)
+        spacer.pack()
+        
         self.progress_frame.update_idletasks()
         self.log_height = self.progress_frame.winfo_reqheight()
         # Add an empty frame at the bottom to account for log text area height
@@ -686,11 +715,35 @@ class SentimentAnalysisApp:
         )
         self.second_model_label.pack()
 
-        model_radio_frame = tk.Frame(self.dual_model_frame)
-        model_radio_frame.pack()
-        for option in [" GPT-3.5 ", " GPT-4o mini ", " GPT-4o "]:
+        # Create container frame for all model options
+        second_model_container_frame = tk.Frame(self.dual_model_frame)
+        second_model_container_frame.pack()
+        
+        # First row frame
+        model_radio_frame1 = tk.Frame(second_model_container_frame)
+        model_radio_frame1.pack()
+        
+        # First row options
+        first_row_options = [" GPT-3.5 ", " GPT-4o mini ", " GPT-4o "]
+        for option in first_row_options:
             model_radio_button = ttk.Radiobutton(
-                model_radio_frame,
+                model_radio_frame1,
+                text=option,
+                value=option,
+                variable=self.second_model_var,
+                style="radios.Toolbutton",
+            )
+            model_radio_button.pack(side="left")
+        
+        # Second row frame
+        model_radio_frame2 = tk.Frame(second_model_container_frame)
+        model_radio_frame2.pack(pady=(5, 0))
+        
+        # Second row options
+        second_row_options = [" Gemini 1.5 Flash ", " Gemini 1.5 Pro "]
+        for option in second_row_options:
+            model_radio_button = ttk.Radiobutton(
+                model_radio_frame2,
                 text=option,
                 value=option,
                 variable=self.second_model_var,
@@ -890,7 +943,7 @@ class SentimentAnalysisApp:
             system_prompt=self.system_prompt_entry.get("1.0", tk.END),
             user_prompt=self.user_prompt_entry.get(),
             user_prompt2=self.user_prompt_entry2.get(),
-            gpt_model=self.gpt_model_var.get().strip(),
+            model_display_name=self.model_display_name_var.get().strip(),
             update_brandwatch=bool(self.bw_checkbox_var.get()),
             output_probabilities=bool(self.logprob_checkbox_var.get()),
             company_column=self.company_column_entry.get(),
@@ -901,7 +954,7 @@ class SentimentAnalysisApp:
             temperature=float(self.temperature_scale.get()),
             max_tokens=int(self.max_tokens_scale.get()),
             use_dual_models=bool(self.dual_model_var.get()),
-            second_gpt_model=self.second_model_var.get().strip(),
+            second_model_display_name=self.second_model_var.get().strip(),
             model_split_percentage=int(self.split_scale_var.get()),
         )
 

@@ -50,7 +50,7 @@ def read_file(input_file, log_message):
     elif file_extension in [".xlsx", ".xls"]:
         return read_excel_file(input_file, log_message)
     else:
-        raise ValueError("Input file must be a .xlsx, .csv, or .zip file.")
+        raise ValueError("Input file must be a .xlsx, .csv, or .zip file (and file name can't have periods)")
 
 
 def read_csv_file(input_file, log_message):
@@ -174,4 +174,6 @@ def write_file(df, output_file, log_message):
         df.to_excel(output_file, index=False)
     else:
         raise ValueError("Output file must be a .xlsx or .csv.")
-    log_message(f"Results saved to {output_file}.")
+    # Normalize path with forward slashes for consistent logging
+    normalized_path = output_file.replace('\\', '/')
+    log_message(f"Results saved to {normalized_path}.")

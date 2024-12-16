@@ -11,7 +11,7 @@ class SentimentAnalysisConfig:
     system_prompt: Optional[str] = None
     user_prompt: Optional[str] = None
     user_prompt2: Optional[str] = None
-    gpt_model: str = "GPT-4o mini"
+    model_display_name: str = "GPT-4o mini"
     update_brandwatch: bool = False
     output_probabilities: bool = False
     company_column: Optional[str] = None
@@ -23,7 +23,7 @@ class SentimentAnalysisConfig:
     batch_token_limit: int = field(init=False)
     batch_requests_limit: int = field(init=False)
     use_dual_models: bool = False
-    second_gpt_model: Optional[str] = None
+    second_model_display_name: Optional[str] = None
     model_split_percentage: int = 50
 
     # Class-level constants
@@ -31,17 +31,21 @@ class SentimentAnalysisConfig:
         "GPT-3.5": "gpt-3.5-turbo",
         "GPT-4o mini": "gpt-4o-mini",
         "GPT-4o": "gpt-4o",
+        "Gemini 1.5 Flash": "gemini-1.5-flash",
+        "Gemini 1.5 Pro": "gemini-1.5-pro",
     }
     
-    MODEL_LIMITS = {
+    MODEL_LIMITS = { # (per minute limits / 2) cuz 30 second delays
         "gpt-3.5-turbo": {"token_limit": 5000000, "requests_limit": 5000},
         "gpt-4o": {"token_limit": 1000000, "requests_limit": 5000},
         "gpt-4o-mini": {"token_limit": 5000000, "requests_limit": 5000},
+        "gemini-1.5-flash": {"token_limit": 2000000, "requests_limit": 1000},
+        "gemini-1.5-pro": {"token_limit": 2000000, "requests_limit": 500},
     }
 
     def __post_init__(self):
         # Initialize first model
-        self._update_model_config(self.gpt_model)
+        self._update_model_config(self.model_display_name)
         
     def _update_model_config(self, model_choice: str):
         """Update model configuration based on selected model."""
@@ -52,8 +56,8 @@ class SentimentAnalysisConfig:
 
     def prepare_second_model(self):
         """Configure for second model when doing dual analysis."""
-        if self.use_dual_models and self.second_gpt_model:
-            self._update_model_config(self.second_gpt_model.strip())
+        if self.use_dual_models and self.second_model_display_name:
+            self._update_model_config(self.second_model_display_name.strip())
 
 
 class ConfigManager:

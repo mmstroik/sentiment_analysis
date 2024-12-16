@@ -172,7 +172,7 @@ def run_dual_model_analysis(
     log_message,
 ):
     log_message(
-        f"Starting dual model analysis with {config.gpt_model} ({config.model_split_percentage}%) and {config.second_gpt_model} ({100-config.model_split_percentage}%)..."
+        f"Starting dual model analysis with {config.model_display_name} ({config.model_split_percentage}%) and {config.second_model_display_name} ({100-config.model_split_percentage}%)..."
     )
     # Calculate split point
     total_rows = len(df)
