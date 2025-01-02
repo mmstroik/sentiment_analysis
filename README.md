@@ -137,7 +137,7 @@ Brandwatch exports do not need to be opened or altered after downloading before 
 - [x] ~~Automatic per-company sentiment analysis based on a company column and ordered list~~  
       - [x] ~~Option to use mutually exclusive BW tags for each company mentioned and its corresponding sentiment instead of single sentiment values per mention (sentiment analyzed toward each company mentioned in each post separately)~~  
 - [ ] Advanced options
-      - [ ] Temperature, max token limit, top p  
+      - [x] Temperature, max token limit, top p  
       - [ ] Custom prompts for multi-company analysis  
       - [ ] Non-sentiment category classification  
 - [ ] Fine-tuned GPT-4o-mini model on hand coded sentiment data?

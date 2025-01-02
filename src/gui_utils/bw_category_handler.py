@@ -5,8 +5,8 @@ import pymssql
 from typing import List, Tuple, Dict
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from src.secrets.keys import BW_API_KEY, PROJECT_ID
-from src.secrets.azure import SERVER, DATABASE, UID, PWD
+from src.sa_secrets.keys import BW_API_KEY, PROJECT_ID
+from src.sa_secrets.azure import SERVER, DATABASE, UID, PWD
 
 class BWCategoryHandler:
     def __init__(self, log_message):
