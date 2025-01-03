@@ -6,13 +6,14 @@ import pandas as pd
 from aiohttp import ClientSession
 
 import tiktoken
-import tiktoken_ext
-from tiktoken_ext import openai_public
 
-from .sa_secrets.keys import OPENAI_API_KEY
+from .sa_secrets.keys import OPENAI_API_KEY, GEMINI_API_KEY
 
 RATE_LIMIT_DELAY = 30  # seconds
 
+OPENAI_API_ENDPOINT = "https://api.openai.com/v1/chat/completions"
+GEMINI_API_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+GEMINI_TOKEN_COUNT_API_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:countTokens"
 
 # Asynchronously processes tweets in batches (based on token counts)
 async def batch_processing_handler(
@@ -21,7 +22,7 @@ async def batch_processing_handler(
     update_progress_gui,
     log_message,
 ):
-    calculate_token_count(config, df, log_message)
+    await calculate_token_count(config, df, log_message)
 
     progress_scale = 60 if config.update_brandwatch else 90
     
@@ -96,15 +97,19 @@ async def process_batches(
 
         batch = working_df.iloc[start_idx:batch_end_idx]
 
-        # Create tasks with indices
+        if config.model_name.startswith('gemini'):
+            async_func = call_gemini_async
+        else:
+            async_func = call_openai_async
+
         if config.customization_option == "Multi-Company":
             tasks = [
-                (i, call_openai_async(config, session, tweet, company))
+                (i, async_func(config, session, tweet, company))
                 for i, (tweet, company) in enumerate(zip(batch["Full Text"], batch["AnalyzedCompany"]))
             ]
         else:
             tasks = [
-                (i, call_openai_async(config, session, tweet))
+                (i, async_func(config, session, tweet))
                 for i, tweet in enumerate(batch["Full Text"])
             ]
 
@@ -218,6 +223,71 @@ async def call_openai_async(
             else:
                 return "Error"
 
+async def call_gemini_async(
+    config,
+    session: ClientSession,
+    tweet: str,
+    company: str = None,
+    max_retries=6,
+):
+    if config.customization_option == "Multi-Company":
+        toward_company = f" toward {company}" if company else ""
+        system_prompt = config.system_prompt.format(toward_company=toward_company)
+    else:
+        system_prompt = config.system_prompt
+
+    payload = {
+        "systemInstruction": {
+            "parts": [{"text": system_prompt}]
+        },
+        "contents": [{
+            "parts": [{"text": f'{config.user_prompt} "{tweet}"\n{config.user_prompt2}'}]
+        }],
+        "generationConfig": {
+            "temperature": config.temperature,
+            "maxOutputTokens": config.max_tokens,
+            "responseLogprobs": config.output_probabilities,
+        }
+    }
+
+    url = GEMINI_API_ENDPOINT.format(model=config.model_name)
+    headers = {
+        "Content-Type": "application/json",
+    }
+
+    params = {"key": GEMINI_API_KEY}
+
+    retry_delay = 1
+    for attempt in range(max_retries):
+        try:
+            async with session.post(
+                url,
+                json=payload,
+                headers=headers,
+                params=params,
+            ) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    sentiment = result["candidates"][0]["content"]["parts"][0]["text"]
+                    
+                    if config.output_probabilities:
+                        # Get first token's logprob from logprobsResult
+                        logprob = result["candidates"][0]["logprobsResult"]["chosenCandidates"][0]["logProbability"]
+                        return sentiment.strip(), logprob
+                    else:
+                        return sentiment.strip()
+                elif attempt < max_retries - 1:
+                    await asyncio.sleep(retry_delay)
+                    retry_delay += 2
+                else:
+                    result = await response.text()
+                    return "Error"
+        except Exception as e:
+            if attempt < max_retries - 1:
+                await asyncio.sleep(retry_delay)
+                retry_delay += 2
+            else:
+                return "Error"
 
 def handle_batch_results(config, df, log_message, batch, results):
     for tweet_idx, result in zip(batch.index, results):
@@ -234,39 +304,81 @@ def handle_batch_results(config, df, log_message, batch, results):
                 df.at[tweet_idx, "Sentiment"] = sentiment
 
 
-def calculate_token_count(config, df, log_message):
+async def calculate_token_count(config, df, log_message):
     log_message("Calculating token counts for each mention...")
-    full_user_prompt = f'{config.user_prompt} ""\n{config.user_prompt2}'
-    ENCODING = tiktoken.encoding_for_model(config.model_name)
-    if config.customization_option == "Multi-Company":
-        # Calculate token count for the longest possible prompt (with " toward Company")
-        longest_company_name = df["AnalyzedCompany"].max()
-        prompt_token_count = len(
-            ENCODING.encode(
-                config.system_prompt.format(
-                    toward_company=f" toward {longest_company_name}"
-                )
-                + full_user_prompt
-            )
-        )
-    else:
-        prompt_token_count = len(
-            ENCODING.encode(config.system_prompt + full_user_prompt)
-        )
-
-    # Find rows where 'Full Text' is not a string or is empty
+    
+    # Find and drop rows where 'Full Text' is not a string or is empty
     invalid_rows = df[
         ~df["Full Text"].apply(lambda x: isinstance(x, str) and x.strip() != "")
     ].index
-
-    # Drop these rows from the DataFrame
     df.drop(invalid_rows, inplace=True)
+    
+    full_user_prompt = f'{config.user_prompt} ""\n{config.user_prompt2}'
+    
+    if config.model_name.startswith('gemini'):
+        async with ClientSession() as session:
+            if config.customization_option == "Multi-Company":
+                longest_company_name = df["AnalyzedCompany"].max()
+                system_with_prompt = config.system_prompt.format(
+                    toward_company=f" toward {longest_company_name}"
+                ) + full_user_prompt
+            else:
+                system_with_prompt = config.system_prompt + full_user_prompt
+            
+            prompt_token_count = await calculate_gemini_token_count(
+                config, system_with_prompt, session
+            )
 
-    df["Token Count"] = df["Full Text"].apply(
-        lambda tweet: len(ENCODING.encode(tweet, allowed_special={"<|endoftext|>"}))
-        + prompt_token_count
-        + 2
-    )
+            tasks = [
+                calculate_gemini_token_count(config, tweet, session)
+                for tweet in df["Full Text"]
+            ]
+            
+            # Run all token counting tasks concurrently
+            token_counts = await asyncio.gather(*tasks)
+            df["Token Count"] = [count + prompt_token_count + 2 for count in token_counts]
+
+    else:
+        # OpenAI token counting logic
+        ENCODING = tiktoken.encoding_for_model(config.model_name)
+        
+        if config.customization_option == "Multi-Company":
+            longest_company_name = df["AnalyzedCompany"].max()
+            prompt_token_count = len(
+                ENCODING.encode(
+                    config.system_prompt.format(
+                        toward_company=f" toward {longest_company_name}"
+                    )
+                    + full_user_prompt
+                )
+            )
+        else:
+            prompt_token_count = len(
+                ENCODING.encode(config.system_prompt + full_user_prompt)
+            )
+
+        df["Token Count"] = df["Full Text"].apply(
+            lambda tweet: len(ENCODING.encode(tweet, allowed_special={"<|endoftext|>"}))
+            + prompt_token_count
+            + 2
+        )
+
+
+async def calculate_gemini_token_count(config, text, session):
+    url = GEMINI_TOKEN_COUNT_API_ENDPOINT.format(model=config.model_name)
+    params = {"key": GEMINI_API_KEY}
+    
+    payload = {
+        "contents": [{
+            "parts": [{"text": text}]
+        }]
+    }
+    
+    async with session.post(url, json=payload, params=params) as response:
+        if response.status == 200:
+            result = await response.json()
+            return result["totalTokens"]
+        raise Exception(f"Failed to get token count from Gemini API. Status code: {response.status}")
 
 
 def calculate_batch_size(df, batch_token_limit, batch_requests_limit, start_idx):

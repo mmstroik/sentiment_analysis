@@ -4,6 +4,7 @@ import tkinter.font as tkfont
 
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
+
 from .scrolled import ScrolledText
 
 

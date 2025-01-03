@@ -137,6 +137,13 @@ def run_sentiment_analysis_thread(
                 f"Merged expanded seperate company results back into {len(df)} mentions."
             )
 
+        sentiment_counts = df["Sentiment"].value_counts()
+        log_message("Sentiment Distribution for output file:")
+        for sentiment in ["Positive", "Neutral", "Negative"]:
+            count = sentiment_counts.get(sentiment, 0)
+            percentage = (count / len(df)) * 100
+            log_message(f"{sentiment}: {count} ({percentage:.1f}%)")
+
         file_operations.write_file(df, config.output_file, log_message)
 
         if config.update_brandwatch:
@@ -172,7 +179,7 @@ def run_dual_model_analysis(
     log_message,
 ):
     log_message(
-        f"Starting dual model analysis with {config.gpt_model} ({config.model_split_percentage}%) and {config.second_gpt_model} ({100-config.model_split_percentage}%)..."
+        f"Starting dual model analysis with {config.model_display_name} ({config.model_split_percentage}%) and {config.second_model_display_name} ({100-config.model_split_percentage}%)..."
     )
     # Calculate split point
     total_rows = len(df)
