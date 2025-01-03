@@ -5,6 +5,7 @@ build/
 dist/
 src/__pycache__/
 src/gui_utils/__pycache__/
+src/DS_Tokenizer/__pycache__/
 gui_utils/__pycache__/
 src/api_response_logs/
 *.csv
