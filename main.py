@@ -1,7 +1,7 @@
 import os
 import sys
 import tkinter as tk
-from tkinter import filedialog, scrolledtext
+from tkinter import filedialog
 import tkinter.font as tkFont
 import ctypes
 
@@ -16,6 +16,7 @@ import darkdetect
 from src import connector_functions, bw_upload_only, metrics, input_config
 from src.gui_utils.collapsed import CollapsingHeader
 from src.gui_utils.scrolled import ScrolledText
+from src.gui_utils.model_selection import ModelSelector
 from src.gui_utils import instructions
 
 
@@ -40,7 +41,7 @@ class SentimentAnalysisApp:
 
         icon_path = self.resource_path("themes/pie_icon.ico")
         self.master.iconbitmap(icon_path)
-        
+
         # Center window before showing
         self.center_window()
         self.master.after_idle(self.master.deiconify)
@@ -97,6 +98,20 @@ class SentimentAnalysisApp:
             padding=7,
             background=self.style.colors.selectbg,
             borderwidth=0,
+        )
+        self.style.configure(
+            "TMenubutton",
+            font=("Segoe UI", 11),
+            padding=7,
+            background=self.style.colors.selectbg,
+            borderwidth=0,
+        )
+        self.style.map(
+            "TMenubutton",
+            background=[
+                ("pressed !disabled", self.style.colors.primary),
+                ("hover !disabled", self.style.colors.primary),
+            ],
         )
         self.style.configure(
             "Transparent.TButton",
@@ -166,7 +181,7 @@ class SentimentAnalysisApp:
         self.output_var.trace_add("write", self.check_file_exists)
         self.progress_var = tk.DoubleVar()
         self.customization_var = tk.StringVar(value=" Default ")
-        self.model_display_name_var = tk.StringVar(value=" GPT-4o mini ")
+        self.model_display_name_var = tk.StringVar(value="GPT-4o mini")
         self.bw_checkbox_var = tk.IntVar()
         self.separate_company_tags_checkbox_var = tk.IntVar()
 
@@ -174,7 +189,7 @@ class SentimentAnalysisApp:
         self.temperature_var = tk.DoubleVar(value=0.3)
         self.max_tokens_var = tk.DoubleVar(value=1)
         self.dual_model_var = tk.BooleanVar(value=False)
-        self.second_model_var = tk.StringVar(value=" GPT-3.5 ")
+        self.second_model_var = tk.StringVar(value="GPT-3.5")
         self.split_scale_var = tk.DoubleVar(value=50)
         self.theme_var = tk.StringVar(value=" System ")
 
@@ -272,14 +287,6 @@ class SentimentAnalysisApp:
         )
         output_button.pack(side=tk.RIGHT)
 
-        # Add tooltip to the output button
-        ToolTip(
-            output_button,
-            text="Tip: For very large files, use .csv as the output type for better performance.",
-            wraplength=250,
-            delay=100,
-        )
-
         self.warning_label = tk.Label(
             self.sentiment_tab_frame,
             text="",
@@ -354,8 +361,14 @@ class SentimentAnalysisApp:
 
         multi_company_label = tk.Label(
             self.multi_company_frame,
-            text="List BW companies seperated by commas (in order of priority):",
+            text="List BW companies separated by commas (in order of priority):",
             font=("Segoe UI", 12),
+        )
+        ToolTip(
+            multi_company_label,
+            text="If multiple companies are mentioned in one post, the order of this list determines which company to analyze sentiment toward. For posts that don't mention a specified company, it will just code the overall sentiment.",
+            wraplength=500,
+            delay=100, 
         )
         self.multi_company_entry = tk.Text(
             self.multi_company_frame,
@@ -364,26 +377,24 @@ class SentimentAnalysisApp:
             font=("Segoe UI", 11),
             wrap=tk.WORD,
         )
-
-        separate_company_tags_checkbox_frame = tk.Frame(self.multi_company_frame)
         separate_company_tags_checkbox = ttk.Checkbutton(
-            separate_company_tags_checkbox_frame,
+            self.multi_company_frame,
             variable=self.separate_company_tags_checkbox_var,
             style="Roundtoggle.Toolbutton",
+            text=" Separate sentiment tags for each company mentioned",
         )
-        separate_company_tags_checkbox_label = tk.Label(
-            separate_company_tags_checkbox_frame,
-            text=" Separately code sentiment toward each company\n  mentioned in a post (adds BW tag for each company)",
-            font=("Segoe UI", 12),
+        ToolTip(
+            separate_company_tags_checkbox,
+            text='For each post, this will add separate “[Sentiment] toward [Company]” BW tags for every company mentioned (usually overkill). The main sentiment value is still based on the above list order.',
+            wraplength=500,
+            delay=100, 
         )
 
         company_column_label.pack(pady=(0, 0))
         self.company_column_entry.pack(pady=(1, 0))
         multi_company_label.pack(pady=(8, 0))
         self.multi_company_entry.pack(pady=(1, 0))
-        separate_company_tags_checkbox_frame.pack(pady=(10, 0))
-        separate_company_tags_checkbox.pack(side=tk.LEFT)
-        separate_company_tags_checkbox_label.pack(side=tk.LEFT)
+        separate_company_tags_checkbox.pack(side=tk.LEFT, pady=(15, 0))
 
     def create_custom_prompt_section(self):
         self.system_prompt_frame = tk.Frame(self.sentiment_tab_frame)
@@ -440,46 +451,14 @@ class SentimentAnalysisApp:
         self.user_prompt_entry2.pack(side=tk.LEFT)
 
     def create_model_selection(self):
-        self.gpt_model_label = tk.Label(
-            self.sentiment_tab_frame, text="Model:", font=("Segoe UI", 12)
+        # Primary model selector
+        self.primary_selector = ModelSelector(
+            self.sentiment_tab_frame,
+            self.model_display_name_var,
+            "Model:"
         )
-        self.gpt_model_label.pack(pady=(20, 0))
-        
-        # Create a container frame for all model options
-        self.model_container_frame = tk.Frame(self.sentiment_tab_frame)
-        self.model_container_frame.pack()
-        
-        # First row frame
-        model_radio_frame1 = tk.Frame(self.model_container_frame)
-        model_radio_frame1.pack()
-        
-        # First row options
-        first_row_options = [" GPT-3.5 ", " GPT-4o mini ", " GPT-4o "]
-        for option in first_row_options:
-            model_radio_button = ttk.Radiobutton(
-                model_radio_frame1,
-                text=option,
-                value=option,
-                variable=self.model_display_name_var,
-                style="radios.Toolbutton",
-            )
-            model_radio_button.pack(side="left")
-        
-        # Second row frame
-        model_radio_frame2 = tk.Frame(self.model_container_frame)
-        model_radio_frame2.pack(pady=(5, 0))
-        
-        # Second row options
-        second_row_options = [" Gemini 1.5 Flash ", " Gemini 1.5 Pro "]
-        for option in second_row_options:
-            model_radio_button = ttk.Radiobutton(
-                model_radio_frame2,
-                text=option,
-                value=option,
-                variable=self.model_display_name_var,
-                style="radios.Toolbutton",
-            )
-            model_radio_button.pack(side="left")
+        self.model_container_frame = self.primary_selector.frame
+        self.gpt_model_label = self.primary_selector.label
 
     def create_run_button(self):
         self.sentiment_run_button = ttk.Button(
@@ -578,14 +557,14 @@ class SentimentAnalysisApp:
         theme_height = theme_frame.winfo_reqheight()
         input_minus_theme = input_height - theme_height
         theme_label_height = theme_label.winfo_reqheight()
-        
+
         tab_height = self.get_tab_height()
         spacer_height = tab_height + input_minus_theme - (theme_label_height / 2)
 
         # Add an empty frame
         top_spacer = ttk.Frame(self.advanced_frame, height=spacer_height)
         top_spacer.pack(side="top")
-        
+
         notebook_frame_height = self.sentiment_tab_frame.winfo_reqheight()
         model_select_width = self.model_container_frame.winfo_reqwidth()
 
@@ -657,7 +636,7 @@ class SentimentAnalysisApp:
         # Add a spacer
         spacer = ttk.Frame(advanced_options, width=model_select_width)
         spacer.pack()
-        
+
         self.progress_frame.update_idletasks()
         self.log_height = self.progress_frame.winfo_reqheight()
         # Add an empty frame at the bottom to account for log text area height
@@ -666,18 +645,22 @@ class SentimentAnalysisApp:
 
     def get_tab_height(self, tab_id=0):
         # Create temporary label to measure tab text height
-        temp_label = ttk.Label(self.advanced_frame, text=self.notebook.tab(tab_id, "text"))
+        temp_label = ttk.Label(
+            self.advanced_frame, text=self.notebook.tab(tab_id, "text")
+        )
         tab_style = self.style.lookup("TNotebook.Tab", "font")
         if tab_style:
             temp_label.configure(font=tab_style)
-        temp_label.update_idletasks()   
+        temp_label.update_idletasks()
         height = temp_label.winfo_reqheight()
 
         tab_padding = self.style.lookup("TNotebook.Tab", "padding")
         if tab_padding:
             try:
                 pad_top = int(tab_padding[1])
-                pad_bottom = int(tab_padding[3] if len(tab_padding) > 3 else tab_padding[1])
+                pad_bottom = int(
+                    tab_padding[3] if len(tab_padding) > 3 else tab_padding[1]
+                )
                 height += pad_top + pad_bottom
             except (IndexError, TypeError):
                 pass
@@ -709,47 +692,12 @@ class SentimentAnalysisApp:
         # Create frame for dual model options (initially hidden)
         self.dual_model_frame = ttk.Frame(parent_frame)
 
-        # Second model selection
-        self.second_model_label = tk.Label(
-            self.dual_model_frame, text="Second Model:", font=("Segoe UI", 12)
+        # Second model selector
+        self.secondary_selector = ModelSelector(
+            self.dual_model_frame,
+            self.second_model_var,
+            "Second Model:"
         )
-        self.second_model_label.pack()
-
-        # Create container frame for all model options
-        second_model_container_frame = tk.Frame(self.dual_model_frame)
-        second_model_container_frame.pack()
-        
-        # First row frame
-        model_radio_frame1 = tk.Frame(second_model_container_frame)
-        model_radio_frame1.pack()
-        
-        # First row options
-        first_row_options = [" GPT-3.5 ", " GPT-4o mini ", " GPT-4o "]
-        for option in first_row_options:
-            model_radio_button = ttk.Radiobutton(
-                model_radio_frame1,
-                text=option,
-                value=option,
-                variable=self.second_model_var,
-                style="radios.Toolbutton",
-            )
-            model_radio_button.pack(side="left")
-        
-        # Second row frame
-        model_radio_frame2 = tk.Frame(second_model_container_frame)
-        model_radio_frame2.pack(pady=(5, 0))
-        
-        # Second row options
-        second_row_options = [" Gemini 1.5 Flash ", " Gemini 1.5 Pro "]
-        for option in second_row_options:
-            model_radio_button = ttk.Radiobutton(
-                model_radio_frame2,
-                text=option,
-                value=option,
-                variable=self.second_model_var,
-                style="radios.Toolbutton",
-            )
-            model_radio_button.pack(side="left")
 
         # Split percentage slider
         self.split_label = tk.Label(
@@ -775,35 +723,38 @@ class SentimentAnalysisApp:
         self.advanced_frame.pack(side=tk.RIGHT, padx=(10, 10), pady=10, fill=tk.Y)
         self.customization_var.set(" Multi-Company ")
         self.on_customization_selected()
-        
+
         # Force window to calculate its dimensions
         self.master.update_idletasks()
-        
+
         # Get window and screen dimensions
         window_width = self.master.winfo_reqwidth()
         window_height = self.master.winfo_reqheight()
         screen_width = self.master.winfo_screenwidth()
-        
+
         # Get work area height (screen minus taskbar)
-        if sys.platform.startswith('win'):
+        if sys.platform.startswith("win"):
             try:
                 from ctypes import windll
+
                 work_area_height = windll.user32.GetSystemMetrics(17)  # SM_CYFULLSCREEN
             except Exception as e:
                 print(f"Error getting work area height: {e}")
                 work_area_height = self.master.winfo_screenheight() - 90  # Fallback
         else:
-            work_area_height = self.master.winfo_screenheight() - 60  # Non-Windows fallback
-        
+            work_area_height = (
+                self.master.winfo_screenheight() - 60
+            )  # Non-Windows fallback
+
         # Calculate position
         x = (screen_width - window_width) // 2
         y = (work_area_height - window_height) // 2
-        
+
         # Reset to default state
         self.advanced_frame.pack_forget()
         self.customization_var.set(" Default ")
         self.on_customization_selected()
-        
+
         # Set position
         self.master.geometry(f"+{x}+{y}")
 
@@ -832,23 +783,23 @@ class SentimentAnalysisApp:
     def check_file_exists(self, *args):
         output_path = self.output_var.get()
         input_path = self.input_var.get()
-        
+
         # If output path is empty, no warning needed yet
         if not output_path:
             self.warning_label.config(text="")
             return
-        
+
         # Apply the same default logic as in file_operations.py
         if not os.path.splitext(output_path)[1]:
             output_path += ".csv"
-        
+
         if not os.path.dirname(output_path) and input_path:
             output_path = os.path.join(os.path.dirname(input_path), output_path)
-        
+
         if os.path.isfile(output_path):
             self.warning_label.config(
-                text=f"Warning: '{os.path.basename(output_path)}' exists and will be overwritten.", 
-                fg="red"
+                text=f"Warning: '{os.path.basename(output_path)}' exists and will be overwritten.",
+                fg="red",
             )
         else:
             self.warning_label.config(text="")
@@ -925,7 +876,7 @@ class SentimentAnalysisApp:
         self.temperature_var.set(0.3)
         self.max_tokens_var.set(1)
         self.dual_model_var.set(False)
-        self.second_model_var.set(" GPT-3.5 ")
+        self.second_model_var.set("GPT-3.5")
         self.split_scale_var.set(50)
 
         # Update labels and hide dual model frame
