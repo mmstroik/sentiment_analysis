@@ -45,7 +45,7 @@ def analyze_api_metrics(log_message, enable_button, disable_button, log_dir="api
     
     # Response time statistics
     log_message("\nResponse Time Statistics (seconds):")
-    stats = recent_df['response_time'].describe()
+    stats = recent_df['total_response_time'].describe()
     for stat_name, value in stats.items():
         log_message(f"{stat_name}: {value:.2f}")
     
@@ -57,7 +57,7 @@ def analyze_api_metrics(log_message, enable_button, disable_button, log_dir="api
     # Daily success rates
     daily_stats = recent_df.groupby('date').agg({
         'status': lambda x: (x == 'success').mean() * 100,
-        'response_time': 'mean'
+        'total_response_time': 'mean'
     }).round(2)
     daily_stats.columns = ['Success Rate %', 'Avg Response Time']
     log_message("\nDaily Metrics (last 5 days):")

@@ -1,6 +1,79 @@
 # Sentiment Analysis Tool Changelog
 
+## 2025
+
+### 2025-01-03
+
+* Merge branch 'core-logic-refactor'
+* add newlines
+* init refactor
+* commit submodule commit (from key merge)
+* Merge branch 'gemini'
+* commit new submodule hash
+* add deepseek tokenizer support
+* adjust and consolidate gui to have "Other" model dropdown including deepseekv3
+* add: log sentiment values for entire df at the end
+
 ## 2024
+
+
+### 2024-12-15
+
+* delete gemini md docs
+* add gemini models to gui and config. also, alter model display name variable names and add spacer for advanced options frame width
+* fix lack of await for async calculate tokens call and incorrect token counting endpoint
+* add token counting buffer (+2) for gemini
+* add token counting logic for gemini using api
+* add if else to call correct api based on model name
+* stash gemini changes (token counting, config, and gui updates still needed)
+
+### 2024-12-12
+
+* change submodule import
+* fix: change submodule name to avoid numpy conflict
+* fix: for zip inputs, temp dir cleanup wasn't working due to extracted csv being in a nested dir
+* fix: due to the per-request progress bar updating feature, implemented by replacing asyncio.gather with as_completed, sentiment values were getting assigned to rows based on the order they complete, causing random sentiment assignment. the fix creates a mapping between futures and their original indicies and uses asyncio.wait instead of as_completed
+
+### 2024-12-11
+
+* fix inconsistent temp file cleanup
+* add azure secrets (wrong branch but whatev)
+
+### 2024-12-07
+
+* Merge branch 'category-templates'
+
+### 2024-12-05
+
+* add error handling for adding tag to mention that already has tag with the same name
+
+### 2024-12-04
+
+* Add TCP connection settings and timeouts to prevent semaphore errors in BW API calls
+* add no extension or path in output file support for gui overwrite warning label functionality
+
+### 2024-12-03
+
+* edit gui: Advanced Options label is now a button that toggles the advanced frame. changed spacer height in advanced frame to be more dynamic and accurate based on notebook padding and labelframe text height offset
+* output file name defaults to input file path if no path and .csv if no extension
+
+### 2024-12-01
+
+* update gui: convert advanced options notebook to labelframe, add theme selector in advanced frame, add titlebar color adjustement based on theme, center on screen based on max frame size, convert scrollbar text frames to ttk and use custom scrollbar hiding, refactor modules to src/gui_utils
+
+### 2024-11-27
+
+* update gui, including advanced options collapsing frame
+
+### 2024-11-25
+
+* add per request progress bar updating with asyncio as_completed and scale progress depending on if update_brandwatch is enabled
+* improved progress bar percentage calculations
+* fix response time logging discrepency for bw api requests. remove semaphor. improve error handling
+* add reset button for advanced options vars
+* feat: add dual model advanced option with split % input. + gui updates (advanced options are a notebook now)
+* add error handling function
+* update gui
 
 ### 2024-11-21
 

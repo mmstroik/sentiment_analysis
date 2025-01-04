@@ -1,0 +1,33 @@
+<Codebase_Information>
+Python-based sentiment analysis tool for Digital research and social media monitoring using OpenAI GPT models with optional Brandwatch integration - only used by internal digital team. 
+   <Logic_Overview>
+   Broadly, there are two main processing paths:
+
+   1. Sentiment Analysis → (optional) Brandwatch Upload
+      main.py → input_config.py → connector_functions.py → file_operations.py →
+      [optional: multi_company_analysis.py] → async_core_logic.py (routing and batch processing) →
+      file_operations.py → [optional: bw_api_handling.py (Brandwatch API)]
+
+   2. Direct Brandwatch Upload
+      main.py → bw_upload_only.py → file_operations.py → 
+      bw_api_handling.py (Brandwatch API)
+
+   Core modules:
+   - main.py: GUI interface and initialization
+   - input_config.py: Configuration state management and validation
+   - connector_functions.py: Main workflow orchestration and thread management
+   - file_operations.py: File I/O and format handling (used throughout)
+   - multi_company_analysis.py: Optional pre-processing for company-specific analysis
+   - async_core_logic.py: Routing and async batch processing and batch handling
+   - bw_api_handling.py: Brandwatch API integration
+   - bw_upload_only.py: Standalone Brandwatch upload workflow
+
+   Uses threading for GUI non-blocking operations and asyncio for OpenAI API calls (using aiohttp requests, not the OpenAI Python SDK).
+
+   log_message and update_progress_gui are threadsafe callback functions used to display messages and update the progress bar in the Tkinter GUI, respectively.
+   </Logic_Overview>
+   <Usage>
+   - This tool is packaged with pyinstaller and --onedir and saved in a Sharepoint folder.
+   - The executable is run by team members directly from the synced Sharepoint folder in file explorer, without them having to install anything.
+   </Usage>
+</Codebase_Information>

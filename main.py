@@ -512,7 +512,7 @@ class SentimentAnalysisApp:
         )
         self.log_label.pack(pady=(10, 0))
         log_font = tkFont.nametofont("TkDefaultFont")
-        log_font.configure(size=12)
+        log_font.configure(size=10)
         self.log_text_area = ScrolledText(
             self.progress_frame,
             wrap=tk.WORD,
